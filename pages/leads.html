@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Leads</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html" class="active">Leads</a>
+      </nav>
+    </div>
+    <button type="button" class="btn btn-primary" id="new-lead-btn">+ New lead</button>
+  </header>
+
+  <main class="app-main">
+    <div class="pipeline-board" id="pipeline-board">
+      <!-- Columns render here via js/leads.js -->
+    </div>
+  </main>
+
+  <dialog id="new-lead-dialog">
+    <form id="new-lead-form" class="dialog-form">
+      <h2>New lead</h2>
+      <label>Contact name
+        <input type="text" name="contactName" required />
+      </label>
+      <label>Business name
+        <input type="text" name="businessName" />
+      </label>
+      <label>Source
+        <input type="text" name="source" placeholder="Referral, Instagram, etc." />
+      </label>
+      <label>Email
+        <input type="email" name="email" />
+      </label>
+      <label>Phone
+        <input type="tel" name="phone" />
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" data-close-dialog>Cancel</button>
+        <button type="submit" class="btn btn-primary">Add lead</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="lead-detail-dialog">
+    <div id="lead-detail-content"><!-- rendered via js/leads.js --></div>
+  </dialog>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/leads.js"></script>
+</body>
+</html>
