@@ -121,4 +121,9 @@ index.html — dashboard shell (entry point)
 
 - No framework yet. Stay vanilla JS/HTML/CSS until state management actually hurts (see "Tech stack" above) — don't introduce one preemptively.
 - Design tokens live in `css/tokens.css`. Reference them everywhere; don't hardcode colors/spacing in component styles.
-- Supabase not wired in yet (still on step 2 of "Order of operations" — static/seeded data only).
+- Supabase is wired in (step 3 done). Project: `Agencyos` (ref `kndpvdixtlirwgsqvgjh`) under the **AgencyOS** org — a dedicated org, deliberately separate from the `Amarelinha` Supabase project in the other org, since Amarelinha is an integration target (see "Reality check"), not shared infra.
+  - Tables: `clients`, `projects`, `leads`, `time_entries`. RLS is enabled with a permissive "allow all" policy on each — there's no auth/roles yet (deferred per charter), so this is an explicit, documented trade-off rather than an oversight. Tighten these policies once real auth exists.
+  - `js/supabaseClient.js` holds the project URL + publishable key (safe to expose client-side; access is governed by RLS). `js/dashboard.js` queries `projects` + `time_entries` directly — no backend layer.
+  - The Supabase JS SDK is vendored at `shared/vendor/supabase.js` rather than loaded from a CDN, so the app has no runtime dependency on an external CDN being reachable.
+  - `leads.notes` is a jsonb array of dated note objects rather than a separate table — kept to the charter's named table list for step 3; normalize later if it stops being enough.
+  - Dashboard's "open tasks" count is a manually-set integer column on `projects` for now — a real task system is step 6, not yet built.

@@ -1,30 +1,71 @@
-// Seeded data — placeholder until Supabase is wired in (charter step 3).
-const PROJECTS = [
-  { name: "Método Persea", status: "active", nextMilestone: "Module 3 content review — Aug 4", hoursThisWeek: 6, openTasks: 3 },
-  { name: "Camarim Mineiro", status: "active", nextMilestone: "Bilingual site launch — Aug 10", hoursThisWeek: 9, openTasks: 5 },
-  { name: "Vicaf Hydro", status: "in progress", nextMilestone: "Payroll integration — Aug 15", hoursThisWeek: 4, openTasks: 2 },
-  { name: "Amarelinha", status: "in progress", nextMilestone: "Audit existing repo", hoursThisWeek: 0, openTasks: 1 },
-];
+function getWeekStart(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diffToMonday);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
-function renderProjectCard(project) {
+function toISODate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+async function fetchProjects() {
+  const { data, error } = await supabaseClient
+    .from("projects")
+    .select("id, name, status, next_milestone, next_milestone_date, open_tasks")
+    .order("name");
+  if (error) throw error;
+  return data;
+}
+
+async function fetchHoursThisWeek() {
+  const weekStart = toISODate(getWeekStart());
+  const { data, error } = await supabaseClient
+    .from("time_entries")
+    .select("project_id, hours")
+    .gte("entry_date", weekStart);
+  if (error) throw error;
+
+  const totals = {};
+  for (const entry of data) {
+    totals[entry.project_id] = (totals[entry.project_id] || 0) + Number(entry.hours);
+  }
+  return totals;
+}
+
+function formatMilestone(project) {
+  if (!project.next_milestone) return "—";
+  if (!project.next_milestone_date) return project.next_milestone;
+  const date = new Date(`${project.next_milestone_date}T00:00:00`);
+  const formatted = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${project.next_milestone} — ${formatted}`;
+}
+
+function renderProjectCard(project, hoursThisWeek) {
   const badgeClass = project.status === "active" ? "badge-active" : "badge-progress";
   const card = document.createElement("article");
   card.className = "card";
   card.innerHTML = `
-    <span class="badge ${badgeClass}">${project.status}</span>
+    <span class="badge ${badgeClass}">${project.status.replace("_", " ")}</span>
     <h2>${project.name}</h2>
     <div class="card-meta">
-      <div class="card-meta-row"><span>Next</span><span>${project.nextMilestone}</span></div>
-      <div class="card-meta-row"><span>Hours this week</span><span>${project.hoursThisWeek}</span></div>
-      <div class="card-meta-row"><span>Open tasks</span><span>${project.openTasks}</span></div>
+      <div class="card-meta-row"><span>Next</span><span>${formatMilestone(project)}</span></div>
+      <div class="card-meta-row"><span>Hours this week</span><span>${hoursThisWeek}</span></div>
+      <div class="card-meta-row"><span>Open tasks</span><span>${project.open_tasks}</span></div>
     </div>
   `;
   return card;
 }
 
-function renderDashboard() {
+async function renderDashboard() {
   const grid = document.getElementById("project-grid");
-  grid.replaceChildren(...PROJECTS.map(renderProjectCard));
+  const [projects, hoursByProject] = await Promise.all([fetchProjects(), fetchHoursThisWeek()]);
+
+  grid.replaceChildren(
+    ...projects.map((project) => renderProjectCard(project, hoursByProject[project.id] || 0))
+  );
 
   const dateEl = document.getElementById("today");
   dateEl.textContent = new Date().toLocaleDateString(undefined, {
@@ -34,4 +75,8 @@ function renderDashboard() {
   });
 }
 
-renderDashboard();
+renderDashboard().catch((error) => {
+  console.error("Failed to load dashboard:", error);
+  document.getElementById("project-grid").innerHTML =
+    '<p style="color: var(--color-danger);">Couldn\'t load projects. Check the console for details.</p>';
+});
