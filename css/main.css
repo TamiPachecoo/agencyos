@@ -32,6 +32,11 @@ body {
   margin: 0;
 }
 
+.app-header-date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .app-main {
   padding: var(--space-6);
   max-width: 1200px;
@@ -50,6 +55,12 @@ body {
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-subtle);
 }
 
 .card h2 {
