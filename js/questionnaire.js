@@ -67,22 +67,81 @@ async function loadHtmlQuestionnaire(container, questionnaire) {
 
     let htmlContent = await response.text();
 
+    // Inject response handler script before closing body tag
+    const handlerScript = `
+      <script>
+        window.captureResponse = async function(form) {
+          const formData = new FormData(form);
+          const responseData = {};
+          for (const [key, value] of formData.entries()) {
+            if (!responseData[key]) {
+              responseData[key] = value;
+            } else if (Array.isArray(responseData[key])) {
+              responseData[key].push(value);
+            } else {
+              responseData[key] = [responseData[key], value];
+            }
+          }
+          return responseData;
+        };
+
+        document.addEventListener('submit', async function(event) {
+          const form = event.target.closest('form');
+          if (!form) return;
+          event.preventDefault();
+
+          try {
+            const responseData = await window.captureResponse(form);
+            const response = await fetch('/api/questionnaire-response', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                questionnaire_id: '${questionnaire.id}',
+                response_data: responseData
+              })
+            });
+
+            if (response.ok) {
+              document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;"><div><h2>Thank you!</h2><p>Your responses have been submitted successfully.</p><p style="font-size: 0.9em; margin-top: 2em;">You can close this window.</p></div></div>';
+            } else {
+              alert('Failed to submit response. Please try again.');
+            }
+          } catch (error) {
+            console.error('Submission error:', error);
+            alert('Error submitting response: ' + error.message);
+          }
+        });
+      </script>
+    `;
+
+    const modifiedHtml = htmlContent.replace('</body>', handlerScript + '</body>');
+
     // Wrap the content to ensure it's properly styled
     const wrappedHtml = `
-      <style>
-        body {
-          margin: 0;
-          padding: var(--space-4);
-          background: var(--color-bg);
-        }
-        .questionnaire-wrapper {
-          max-width: 560px;
-          margin: 0 auto;
-        }
-      </style>
-      <div class="questionnaire-wrapper">
-        ${htmlContent}
-      </div>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+          body {
+            margin: 0;
+            padding: var(--space-4);
+            background: var(--color-bg);
+            font-family: system-ui, -apple-system, sans-serif;
+          }
+          .questionnaire-wrapper {
+            max-width: 560px;
+            margin: 0 auto;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="questionnaire-wrapper">
+          ${modifiedHtml}
+        </div>
+      </body>
+      </html>
     `;
 
     // Create an iframe to isolate the content
@@ -102,16 +161,15 @@ async function loadHtmlQuestionnaire(container, questionnaire) {
     iframeDoc.write(wrappedHtml);
     iframeDoc.close();
 
-    // Inject form interception
-    setTimeout(() => {
-      const forms = iframeDoc.querySelectorAll("form");
-      forms.forEach((form) => {
-        form.addEventListener("submit", async (event) => {
-          event.preventDefault();
-          await captureAndSubmitResponse(questionnaire.id, form, iframeDoc);
-        });
-      });
-    }, 100);
+    // Override the fetch API in iframe to capture submissions
+    iframe.contentWindow.fetch = async (url, options) => {
+      if (url === '/api/questionnaire-response') {
+        const body = JSON.parse(options.body);
+        await captureAndSubmitResponse(questionnaire.id, body.response_data, iframeDoc);
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      return window.fetch(url, options);
+    };
   } catch (error) {
     console.error("Failed to load HTML questionnaire:", error);
     throw error;
@@ -150,22 +208,8 @@ async function loadFileQuestionnaire(container, questionnaire) {
   document.body.appendChild(note);
 }
 
-async function captureAndSubmitResponse(questionnaireId, form, iframeDoc) {
+async function captureAndSubmitResponse(questionnaireId, responseData, iframeDoc) {
   try {
-    const formData = new FormData(form);
-    const responseData = {};
-
-    // Capture all form fields
-    for (const [key, value] of formData.entries()) {
-      if (!responseData[key]) {
-        responseData[key] = value;
-      } else if (Array.isArray(responseData[key])) {
-        responseData[key].push(value);
-      } else {
-        responseData[key] = [responseData[key], value];
-      }
-    }
-
     // Submit to database
     const { error } = await supabaseClient
       .from("questionnaire_responses")
