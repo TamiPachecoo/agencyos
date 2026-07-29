@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Discovery Questionnaire</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      padding: var(--space-6) var(--space-4);
+    }
+    .discovery-wrap {
+      width: min(560px, 100%);
+    }
+  </style>
+</head>
+<body>
+  <main class="discovery-wrap">
+    <div id="discovery-content" class="card">
+      <p class="lead-detail-contact">Loading…</p>
+    </div>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/discovery.js"></script>
+</body>
+</html>

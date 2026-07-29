@@ -30,6 +30,16 @@ async function fetchLeads() {
   return data;
 }
 
+async function fetchDiscoveryForm(leadId) {
+  const { data, error } = await supabaseClient
+    .from("discovery_forms")
+    .select("id, questions, answers, share_token, submitted_at")
+    .eq("lead_id", leadId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 function formatLabel(value) {
   return value ? value.replace(/_/g, " ") : "";
 }
@@ -105,14 +115,159 @@ document.getElementById("new-lead-form").addEventListener("submit", async (event
 
 const leadDetailDialog = document.getElementById("lead-detail-dialog");
 
-function openLeadDetail(leadId) {
+async function openLeadDetail(leadId) {
   const lead = leadsCache.find((item) => item.id === leadId);
   if (!lead) return;
-  renderLeadDetail(lead);
   leadDetailDialog.showModal();
+  const discoveryForm = await fetchDiscoveryForm(lead.id);
+  renderLeadDetail(lead, discoveryForm);
 }
 
-function renderLeadDetail(lead) {
+function discoveryLink(token) {
+  return new URL(`discovery.html?token=${token}`, window.location.href).href;
+}
+
+function renderQuestionBuilder(existingQuestions) {
+  const questions = existingQuestions && existingQuestions.length ? existingQuestions : ["", "", ""];
+  return `
+    <p class="lead-detail-contact">Build a short questionnaire and send the client a link — answers come back here.</p>
+    <div id="question-rows">
+      ${questions
+        .map(
+          (q) => `
+        <div class="question-row">
+          <input type="text" class="question-input" value="${escapeHtml(q)}" placeholder="Question" />
+          <button type="button" class="btn btn-secondary remove-question">×</button>
+        </div>`
+        )
+        .join("")}
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="add-question-btn">+ Add question</button>
+      <button type="button" class="btn btn-primary" id="save-workbook-btn">Save &amp; get link</button>
+    </div>
+  `;
+}
+
+function renderDiscoveryWorkbook(form) {
+  if (!form) return renderQuestionBuilder();
+
+  if (form.answers) {
+    return `
+      <p class="lead-detail-contact">Completed ${escapeHtml((form.submitted_at || "").slice(0, 10))}.</p>
+      ${form.answers
+        .map((a) => `<div class="note"><strong>${escapeHtml(a.question)}</strong><p>${escapeHtml(a.answer)}</p></div>`)
+        .join("")}
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" id="reset-workbook-btn">Clear responses &amp; resend</button>
+      </div>
+    `;
+  }
+
+  const link = discoveryLink(form.share_token);
+  return `
+    <p class="lead-detail-contact">Sent — awaiting response. Share this link with the client:</p>
+    <div class="dialog-form">
+      <input type="text" id="workbook-link" readonly value="${escapeHtml(link)}" />
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="copy-link-btn">Copy link</button>
+      <button type="button" class="btn btn-secondary" id="edit-questions-btn">Edit questions</button>
+    </div>
+    <h3>Questions</h3>
+    <ul class="workbook-questions">
+      ${(form.questions || []).map((q) => `<li>${escapeHtml(q)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function mountDiscoveryWorkbook(lead, form) {
+  const container = document.getElementById("discovery-workbook-container");
+  container.innerHTML = renderDiscoveryWorkbook(form);
+  wireDiscoveryWorkbook(lead, form, container);
+}
+
+function wireDiscoveryWorkbook(lead, form, container) {
+  const addBtn = container.querySelector("#add-question-btn");
+  if (addBtn) {
+    addBtn.addEventListener("click", () => {
+      const row = document.createElement("div");
+      row.className = "question-row";
+      row.innerHTML = `<input type="text" class="question-input" placeholder="Question" /><button type="button" class="btn btn-secondary remove-question">×</button>`;
+      container.querySelector("#question-rows").appendChild(row);
+      row.querySelector(".remove-question").addEventListener("click", () => row.remove());
+    });
+  }
+
+  container.querySelectorAll(".remove-question").forEach((btn) => {
+    btn.addEventListener("click", () => btn.closest(".question-row").remove());
+  });
+
+  const saveBtn = container.querySelector("#save-workbook-btn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      const questions = [...container.querySelectorAll(".question-input")]
+        .map((input) => input.value.trim())
+        .filter(Boolean);
+      if (questions.length === 0) {
+        alert("Add at least one question.");
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from("discovery_forms")
+        .upsert({ lead_id: lead.id, questions, answers: null, submitted_at: null }, { onConflict: "lead_id" })
+        .select("id, questions, answers, share_token, submitted_at")
+        .single();
+      if (error) {
+        alert(`Couldn't save workbook: ${error.message}`);
+        return;
+      }
+      mountDiscoveryWorkbook(lead, data);
+    });
+  }
+
+  const copyBtn = container.querySelector("#copy-link-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      const link = container.querySelector("#workbook-link").value;
+      try {
+        await navigator.clipboard.writeText(link);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => (copyBtn.textContent = "Copy link"), 1500);
+      } catch {
+        alert(`Copy this link:\n${link}`);
+      }
+    });
+  }
+
+  const editBtn = container.querySelector("#edit-questions-btn");
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      container.innerHTML = renderQuestionBuilder(form.questions || []);
+      wireDiscoveryWorkbook(lead, form, container);
+    });
+  }
+
+  const resetBtn = container.querySelector("#reset-workbook-btn");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", async () => {
+      if (!confirm("Clear the client's answers and reopen this workbook for resend?")) return;
+      const { data, error } = await supabaseClient
+        .from("discovery_forms")
+        .update({ answers: null, submitted_at: null })
+        .eq("id", form.id)
+        .select("id, questions, answers, share_token, submitted_at")
+        .single();
+      if (error) {
+        alert(`Couldn't reset workbook: ${error.message}`);
+        return;
+      }
+      mountDiscoveryWorkbook(lead, data);
+    });
+  }
+}
+
+function renderLeadDetail(lead, discoveryForm) {
   const notes = Array.isArray(lead.notes) ? [...lead.notes].reverse() : [];
   const contactInfo = lead.contact_info || {};
   const container = document.getElementById("lead-detail-content");
@@ -162,6 +317,9 @@ function renderLeadDetail(lead) {
       <button type="submit" class="btn btn-secondary">Add note</button>
     </form>
 
+    <h3>Discovery Workbook</h3>
+    <div id="discovery-workbook-container"></div>
+
     <h3>Solution Prototype</h3>
     <form id="prototype-form" class="dialog-form">
       <label>Status
@@ -189,6 +347,8 @@ function renderLeadDetail(lead) {
     </div>
   `;
 
+  mountDiscoveryWorkbook(lead, discoveryForm);
+
   document.getElementById("contact-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
@@ -209,7 +369,7 @@ function renderLeadDetail(lead) {
       return;
     }
     await loadBoard();
-    openLeadDetail(lead.id);
+    await openLeadDetail(lead.id);
   });
 
   document.getElementById("delete-lead-btn").addEventListener("click", async () => {
@@ -245,7 +405,7 @@ function renderLeadDetail(lead) {
       return;
     }
     await loadBoard();
-    openLeadDetail(lead.id);
+    await openLeadDetail(lead.id);
   });
 
   document.getElementById("prototype-form").addEventListener("submit", async (event) => {

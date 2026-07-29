@@ -368,6 +368,36 @@ dialog h3 {
   font-size: var(--font-size-sm);
 }
 
+/* Discovery workbook */
+
+.question-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.question-row input {
+  flex: 1;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+
+.workbook-questions {
+  margin: 0 0 var(--space-3);
+  padding-left: 1.2em;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.workbook-questions li {
+  margin-bottom: var(--space-1);
+}
+
 /* Time tracking */
 
 .time-section {
