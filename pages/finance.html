@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Finance</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html">Time</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="finance.html" class="active">Finance</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="card">
+      <h2>Log a payment</h2>
+      <form id="payment-form" class="quick-entry-form">
+        <label>Project
+          <select name="projectId" id="payment-project-select" required></select>
+        </label>
+        <label>Amount
+          <input type="number" name="amount" step="0.01" min="0.01" required />
+        </label>
+        <label>Due date
+          <input type="date" name="dueDate" />
+        </label>
+        <label>Paid date
+          <input type="date" name="paidDate" />
+        </label>
+        <label class="quick-entry-note">Note (optional)
+          <input type="text" name="note" placeholder="Deposit, milestone 2, final..." />
+        </label>
+        <button type="submit" class="btn btn-primary">Log payment</button>
+      </form>
+      <p class="lead-detail-contact">
+        Leave paid date blank for a payment that's expected but not received yet — it shows as projected income until you fill in the paid date.
+      </p>
+    </section>
+
+    <section class="card" style="margin-top: var(--space-5);">
+      <h2>Log an expense</h2>
+      <form id="expense-form" class="quick-entry-form">
+        <label>Date
+          <input type="date" name="expenseDate" id="expense-date" required />
+        </label>
+        <label>Category
+          <input type="text" name="category" placeholder="Software, hosting, contractor..." />
+        </label>
+        <label class="quick-entry-note">Description
+          <input type="text" name="description" placeholder="What was it?" />
+        </label>
+        <label>Amount
+          <input type="number" name="amount" step="0.01" min="0.01" required />
+        </label>
+        <label class="quick-entry-checkbox">
+          <input type="checkbox" name="recurring" /> Recurring
+        </label>
+        <button type="submit" class="btn btn-primary">Log expense</button>
+      </form>
+    </section>
+
+    <section class="time-section">
+      <h2>Monthly overview</h2>
+      <table class="time-table" id="overview-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Expected income</th>
+            <th>Received income</th>
+            <th>Expenses</th>
+            <th>Net (received − expenses)</th>
+          </tr>
+        </thead>
+        <tbody id="overview-body"></tbody>
+      </table>
+    </section>
+
+    <section class="time-section">
+      <h2>Payments by project</h2>
+      <table class="time-table" id="project-payments-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Expected</th>
+            <th>Received</th>
+          </tr>
+        </thead>
+        <tbody id="project-payments-body"></tbody>
+      </table>
+    </section>
+
+    <section class="time-section">
+      <h2>Recent payments</h2>
+      <div class="entries-list" id="payments-list"></div>
+    </section>
+
+    <section class="time-section">
+      <h2>Recent expenses</h2>
+      <div class="entries-list" id="expenses-list"></div>
+    </section>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/finance.js"></script>
+</body>
+</html>
