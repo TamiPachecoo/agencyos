@@ -251,15 +251,28 @@ async function renderProjectDetail(project) {
         const filePath = `${project.id}/${token}-${file.name}`;
 
         console.log("Uploading file to storage:", filePath);
+        console.log("File details:", { name: file.name, size: file.size, type: file.type });
 
-        const { error: uploadError } = await supabaseClient.storage
+        const { error: uploadError, data: uploadData } = await supabaseClient.storage
           .from("questionnaires")
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
         if (uploadError) {
           console.error("Storage upload error:", uploadError);
           throw uploadError;
         }
+
+        console.log("File uploaded successfully:", uploadData);
+
+        // Verify the file exists by trying to get its public URL
+        const { data: publicUrlData } = supabaseClient.storage
+          .from("questionnaires")
+          .getPublicUrl(filePath);
+
+        console.log("Public URL generated:", publicUrlData.publicUrl);
 
         console.log("File uploaded, saving to database");
 
