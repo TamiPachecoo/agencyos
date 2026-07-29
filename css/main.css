@@ -91,6 +91,14 @@ body {
   border-color: var(--color-border-subtle);
 }
 
+.project-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .card h2 {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
@@ -272,6 +280,12 @@ dialog {
 
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
+}
+
+dialog.dialog-wide {
+  width: min(640px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 dialog h2 {
@@ -538,4 +552,52 @@ dialog h3 {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 2px var(--space-1);
+}
+
+/* Repo info: language breakdown + README */
+
+.language-bar {
+  display: flex;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-subtle);
+}
+
+.language-segment {
+  height: 100%;
+}
+
+.language-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.language-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.language-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.readme-box {
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
