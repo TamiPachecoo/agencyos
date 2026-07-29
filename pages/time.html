@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Time</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html" class="active">Time</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="card">
+      <h2>Log hours</h2>
+      <form id="entry-form" class="quick-entry-form">
+        <label>Project
+          <select name="projectId" id="project-select" required></select>
+        </label>
+        <label>Date
+          <input type="date" name="entryDate" id="entry-date" required />
+        </label>
+        <label>Hours
+          <input type="number" name="hours" step="0.25" min="0.25" required />
+        </label>
+        <label class="quick-entry-note">Note (optional)
+          <input type="text" name="note" placeholder="What'd you work on?" />
+        </label>
+        <button type="submit" class="btn btn-primary">Log hours</button>
+      </form>
+    </section>
+
+    <section class="time-section">
+      <h2>Breakdown by project</h2>
+      <table class="time-table" id="breakdown-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>This week</th>
+            <th>This month</th>
+          </tr>
+        </thead>
+        <tbody id="breakdown-body"></tbody>
+        <tfoot id="breakdown-footer"></tfoot>
+      </table>
+    </section>
+
+    <section class="time-section">
+      <h2>Recent entries</h2>
+      <div class="entries-list" id="entries-list"></div>
+    </section>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/time.js"></script>
+</body>
+</html>
