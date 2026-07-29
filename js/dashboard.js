@@ -503,10 +503,11 @@ document.addEventListener("click", (event) => {
   if (btn) btn.closest("dialog").close();
 });
 
-// Initialize storage bucket for questionnaires
+// Initialize storage bucket for questionnaires (optional - mainly for first-time setup)
 async function initializeQuestionnairesBucket() {
   try {
     // Try to create the bucket via Edge Function
+    // Note: This may fail on remote deployments (e.g., GitHub Pages) due to CORS
     const response = await fetch(
       'https://kndpvdixtlirwgsqvgjh.supabase.co/functions/v1/init-questionnaire-bucket',
       { method: 'POST' }
@@ -515,11 +516,16 @@ async function initializeQuestionnairesBucket() {
       console.log('Questionnaires bucket initialized');
     }
   } catch (error) {
-    console.log('Questionnaires bucket initialization note:', error.message);
+    // CORS or network errors are expected on GitHub Pages
+    // Bucket should already be initialized from local development
+    console.log('Questionnaires bucket initialization skipped (expected on GitHub Pages)');
   }
 }
 
-initializeQuestionnairesBucket();
+// Only initialize on localhost, skip on remote deployments
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  initializeQuestionnairesBucket();
+}
 
 renderDashboard().catch((error) => {
   console.error("Failed to load dashboard:", error);
