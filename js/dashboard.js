@@ -136,8 +136,11 @@ async function renderProjectDetail(project) {
       <h3>Client Questionnaires</h3>
       <p class="lead-detail-contact">Upload custom questionnaires for clients to complete.</p>
       <form id="questionnaire-upload-form" class="dialog-form">
-        <label>Upload questionnaire file
-          <input type="file" name="questionnaireFile" accept=".html,.pdf,.docx" required />
+        <label>Upload questionnaire file or folder
+          <input type="file" name="questionnaireFile" accept=".html,.pdf,.docx,.zip" required />
+          <small style="display: block; margin-top: var(--space-2); color: var(--color-text-muted);">
+            Upload a single file (HTML, PDF, DOCX) or a ZIP archive containing a folder
+          </small>
         </label>
         <button type="submit" class="btn btn-secondary">Upload</button>
       </form>
@@ -239,6 +242,10 @@ async function renderProjectDetail(project) {
 
         const randomBytes = crypto.getRandomValues(new Uint8Array(16));
         const token = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // For ZIP files, store the archive and mark as such
+        const isZip = file.name.toLowerCase().endsWith('.zip');
+        const displayName = isZip ? file.name.replace(/\.zip$/i, '') : file.name;
         const filePath = `${project.id}/${token}-${file.name}`;
 
         const { error: uploadError } = await supabaseClient.storage
@@ -251,9 +258,10 @@ async function renderProjectDetail(project) {
           .from("project_questionnaires")
           .insert({
             project_id: project.id,
-            file_name: file.name,
+            file_name: displayName,
             file_path: filePath,
             share_token: token,
+            metadata: isZip ? { is_zip: true } : null,
           });
 
         if (dbError) throw dbError;

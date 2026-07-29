@@ -45,11 +45,16 @@ async function init() {
       return;
     }
 
-    // Determine file type
-    const isHtml = questionnaire.file_name.toLowerCase().endsWith(".html");
-    const isPdf = questionnaire.file_name.toLowerCase().endsWith(".pdf");
+    // Determine file type based on file_path (which contains the original filename with extension)
+    const fileName = questionnaire.file_path.split('/').pop();
+    const isHtml = fileName.toLowerCase().endsWith(".html");
+    const isPdf = fileName.toLowerCase().endsWith(".pdf");
+    const isZip = fileName.toLowerCase().endsWith(".zip");
 
-    if (isHtml) {
+    if (isZip) {
+      // Load questionnaire from ZIP archive
+      await loadZipQuestionnaire(container, questionnaire);
+    } else if (isHtml) {
       // Load HTML file and embed it
       await loadHtmlQuestionnaire(container, questionnaire);
     } else {
@@ -58,6 +63,42 @@ async function init() {
     }
   } catch (error) {
     console.error("Failed to load questionnaire:", error);
+    container.innerHTML = '<div class="error"><p>Couldn\'t load this questionnaire. Check the console for details.</p></div>';
+  }
+}
+
+async function loadZipQuestionnaire(container, questionnaire) {
+  try {
+    const { data } = supabaseClient.storage
+      .from("questionnaires")
+      .getPublicUrl(questionnaire.file_path);
+
+    const fileUrl = data.publicUrl;
+
+    // Try to load index.html from the ZIP using native fetch
+    // For ZIP support, we'd need JSZip library - for now provide download option
+    container.innerHTML = `
+      <div style="padding: var(--space-6); text-align: center;">
+        <h2>Questionnaire Package</h2>
+        <p class="lead-detail-contact">This questionnaire is a packaged folder with multiple files.</p>
+        <p style="margin: var(--space-4) 0;">
+          <a href="${escapeHtml(fileUrl)}" download style="
+            display: inline-block;
+            padding: var(--space-3) var(--space-4);
+            background: var(--color-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            font-weight: var(--font-weight-semibold);
+          ">Download Questionnaire</a>
+        </p>
+        <p class="lead-detail-contact" style="font-size: 0.9em;">
+          After downloading, extract the ZIP file and open the index.html file in your browser to complete the questionnaire.
+        </p>
+      </div>
+    `;
+  } catch (error) {
+    console.error("Failed to load ZIP questionnaire:", error);
     container.innerHTML = '<div class="error"><p>Couldn\'t load this questionnaire. Check the console for details.</p></div>';
   }
 }
