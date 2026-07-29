@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Tasks</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html">Time</a>
+        <a href="tasks.html" class="active">Tasks</a>
+      </nav>
+    </div>
+    <label class="task-filter">Project
+      <select id="project-filter">
+        <option value="">All projects</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="app-main">
+    <form id="task-form" class="quick-entry-form">
+      <label class="quick-entry-note">Task
+        <input type="text" name="title" placeholder="What needs doing?" required />
+      </label>
+      <label>Project
+        <select name="projectId" id="task-project-select" required></select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option value="today">Today</option>
+          <option value="this_week">This week</option>
+          <option value="done">Done</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary">Add task</button>
+    </form>
+
+    <div class="pipeline-board" id="task-board">
+      <!-- Columns render here via js/tasks.js -->
+    </div>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/tasks.js"></script>
+</body>
+</html>

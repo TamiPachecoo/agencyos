@@ -14,10 +14,21 @@ function toISODate(date) {
 async function fetchProjects() {
   const { data, error } = await supabaseClient
     .from("projects")
-    .select("id, name, status, next_milestone, next_milestone_date, open_tasks")
+    .select("id, name, status, next_milestone, next_milestone_date")
     .order("name");
   if (error) throw error;
   return data;
+}
+
+async function fetchOpenTaskCounts() {
+  const { data, error } = await supabaseClient.from("tasks").select("project_id").neq("status", "done");
+  if (error) throw error;
+
+  const counts = {};
+  for (const task of data) {
+    counts[task.project_id] = (counts[task.project_id] || 0) + 1;
+  }
+  return counts;
 }
 
 async function fetchHoursThisWeek() {
@@ -43,7 +54,7 @@ function formatMilestone(project) {
   return `${project.next_milestone} — ${formatted}`;
 }
 
-function renderProjectCard(project, hoursThisWeek) {
+function renderProjectCard(project, hoursThisWeek, openTasks) {
   const badgeClass = project.status === "active" ? "badge-active" : "badge-progress";
   const card = document.createElement("article");
   card.className = "card";
@@ -53,7 +64,7 @@ function renderProjectCard(project, hoursThisWeek) {
     <div class="card-meta">
       <div class="card-meta-row"><span>Next</span><span>${formatMilestone(project)}</span></div>
       <div class="card-meta-row"><span>Hours this week</span><span>${hoursThisWeek}</span></div>
-      <div class="card-meta-row"><span>Open tasks</span><span>${project.open_tasks}</span></div>
+      <div class="card-meta-row"><span>Open tasks</span><span>${openTasks}</span></div>
     </div>
   `;
   return card;
@@ -61,10 +72,16 @@ function renderProjectCard(project, hoursThisWeek) {
 
 async function renderDashboard() {
   const grid = document.getElementById("project-grid");
-  const [projects, hoursByProject] = await Promise.all([fetchProjects(), fetchHoursThisWeek()]);
+  const [projects, hoursByProject, openTasksByProject] = await Promise.all([
+    fetchProjects(),
+    fetchHoursThisWeek(),
+    fetchOpenTaskCounts(),
+  ]);
 
   grid.replaceChildren(
-    ...projects.map((project) => renderProjectCard(project, hoursByProject[project.id] || 0))
+    ...projects.map((project) =>
+      renderProjectCard(project, hoursByProject[project.id] || 0, openTasksByProject[project.id] || 0)
+    )
   );
 
   const dateEl = document.getElementById("today");
