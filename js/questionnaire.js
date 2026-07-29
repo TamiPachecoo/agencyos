@@ -1,3 +1,13 @@
+function escapeHtml(value) {
+  if (value == null) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function init() {
   const container = document.getElementById("questionnaire-content");
   const token = new URLSearchParams(window.location.search).get("token");
@@ -67,109 +77,36 @@ async function loadHtmlQuestionnaire(container, questionnaire) {
 
     let htmlContent = await response.text();
 
-    // Inject response handler script before closing body tag
-    const handlerScript = `
-      <script>
-        window.captureResponse = async function(form) {
-          const formData = new FormData(form);
-          const responseData = {};
-          for (const [key, value] of formData.entries()) {
-            if (!responseData[key]) {
-              responseData[key] = value;
-            } else if (Array.isArray(responseData[key])) {
-              responseData[key].push(value);
-            } else {
-              responseData[key] = [responseData[key], value];
-            }
+    // Create a temporary container to parse and modify HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = htmlContent;
+
+    // Find all forms and add submit handlers
+    const forms = tempDiv.querySelectorAll("form");
+    forms.forEach((form, index) => {
+      form.id = form.id || `questionnaire-form-${index}`;
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const responseData = {};
+
+        // Capture all form fields
+        for (const [key, value] of formData.entries()) {
+          if (!responseData[key]) {
+            responseData[key] = value;
+          } else if (Array.isArray(responseData[key])) {
+            responseData[key].push(value);
+          } else {
+            responseData[key] = [responseData[key], value];
           }
-          return responseData;
-        };
+        }
 
-        document.addEventListener('submit', async function(event) {
-          const form = event.target.closest('form');
-          if (!form) return;
-          event.preventDefault();
+        await captureAndSubmitResponse(questionnaire.id, responseData, container);
+      });
+    });
 
-          try {
-            const responseData = await window.captureResponse(form);
-            const response = await fetch('/api/questionnaire-response', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                questionnaire_id: '${questionnaire.id}',
-                response_data: responseData
-              })
-            });
-
-            if (response.ok) {
-              document.body.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center;"><div><h2>Thank you!</h2><p>Your responses have been submitted successfully.</p><p style="font-size: 0.9em; margin-top: 2em;">You can close this window.</p></div></div>';
-            } else {
-              alert('Failed to submit response. Please try again.');
-            }
-          } catch (error) {
-            console.error('Submission error:', error);
-            alert('Error submitting response: ' + error.message);
-          }
-        });
-      </script>
-    `;
-
-    const modifiedHtml = htmlContent.replace('</body>', handlerScript + '</body>');
-
-    // Wrap the content to ensure it's properly styled
-    const wrappedHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-          body {
-            margin: 0;
-            padding: var(--space-4);
-            background: var(--color-bg);
-            font-family: system-ui, -apple-system, sans-serif;
-          }
-          .questionnaire-wrapper {
-            max-width: 560px;
-            margin: 0 auto;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="questionnaire-wrapper">
-          ${modifiedHtml}
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Create an iframe to isolate the content
-    const iframe = document.createElement("iframe");
-    iframe.id = "questionnaire-container";
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "none";
-    iframe.style.boxSizing = "border-box";
-
-    container.innerHTML = "";
-    container.appendChild(iframe);
-
-    // Write HTML to iframe
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    iframeDoc.open();
-    iframeDoc.write(wrappedHtml);
-    iframeDoc.close();
-
-    // Override the fetch API in iframe to capture submissions
-    iframe.contentWindow.fetch = async (url, options) => {
-      if (url === '/api/questionnaire-response') {
-        const body = JSON.parse(options.body);
-        await captureAndSubmitResponse(questionnaire.id, body.response_data, iframeDoc);
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }
-      return window.fetch(url, options);
-    };
+    // Render the modified HTML
+    container.innerHTML = `<div style="padding: var(--space-4);">${tempDiv.innerHTML}</div>`;
   } catch (error) {
     console.error("Failed to load HTML questionnaire:", error);
     throw error;
@@ -177,38 +114,62 @@ async function loadHtmlQuestionnaire(container, questionnaire) {
 }
 
 async function loadFileQuestionnaire(container, questionnaire) {
-  // For PDF and other file types, show in iframe using public URL
+  // For PDF and other file types, embed in iframe using public URL
   const { data } = supabaseClient.storage
     .from("questionnaires")
     .getPublicUrl(questionnaire.file_path);
 
   const fileUrl = data.publicUrl;
 
+  // Create an HTML page that embeds the file
+  const embedHtml = `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Questionnaire</title>
+      <style>
+        html, body { margin: 0; padding: 0; height: 100%; }
+        body { overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; }
+      </style>
+    </head>
+    <body>
+      <iframe src="${escapeHtml(fileUrl)}" title="Questionnaire"></iframe>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob([embedHtml], { type: "text/html" });
+  const objectUrl = URL.createObjectURL(blob);
+
   const iframe = document.createElement("iframe");
-  iframe.id = "questionnaire-container";
-  iframe.src = fileUrl;
+  iframe.src = objectUrl;
   iframe.style.width = "100%";
   iframe.style.height = "100%";
   iframe.style.border = "none";
+  iframe.style.boxSizing = "border-box";
 
   container.innerHTML = "";
   container.appendChild(iframe);
 
-  // For non-HTML files, show a note about manual submission
+  // Show a note about the document
   const note = document.createElement("div");
   note.style.position = "fixed";
-  note.style.bottom = "var(--space-4)";
+  note.style.top = "var(--space-4)";
   note.style.right = "var(--space-4)";
-  note.style.background = "var(--color-bg-secondary)";
+  note.style.background = "var(--color-bg-subtle)";
   note.style.padding = "var(--space-4)";
   note.style.borderRadius = "var(--radius-md)";
   note.style.maxWidth = "300px";
   note.style.fontSize = "var(--font-size-sm)";
-  note.innerHTML = '<p style="margin: 0;">After completing this questionnaire, please save and send it back to confirm submission.</p>';
+  note.style.zIndex = "1000";
+  note.innerHTML = '<p style="margin: 0;"><strong>Note:</strong> After completing this questionnaire, your submission status will be tracked when responses are sent back.</p>';
   document.body.appendChild(note);
 }
 
-async function captureAndSubmitResponse(questionnaireId, responseData, iframeDoc) {
+async function captureAndSubmitResponse(questionnaireId, responseData, container) {
   try {
     // Submit to database
     const { error } = await supabaseClient
@@ -220,24 +181,14 @@ async function captureAndSubmitResponse(questionnaireId, responseData, iframeDoc
 
     if (error) throw error;
 
-    // Show success message in iframe
-    const successHtml = `
-      <style>
-        body { margin: 0; padding: var(--space-6); background: var(--color-bg); font-family: system-ui; }
-        .success { max-width: 560px; margin: 50px auto; text-align: center; }
-        h2 { color: var(--color-text); margin-top: 0; }
-        p { color: var(--color-text-secondary); line-height: 1.5; }
-      </style>
-      <div class="success">
+    // Show success message
+    container.innerHTML = `
+      <div style="padding: var(--space-6); text-align: center;">
         <h2>Thank you!</h2>
-        <p>Your responses have been submitted successfully.</p>
-        <p style="font-size: 0.9em; margin-top: 2em;">You can close this window.</p>
+        <p class="lead-detail-contact">Your responses have been submitted successfully.</p>
+        <p class="lead-detail-contact" style="font-size: 0.9em; margin-top: 2em;">You can close this window.</p>
       </div>
     `;
-
-    iframeDoc.open();
-    iframeDoc.write(successHtml);
-    iframeDoc.close();
   } catch (error) {
     console.error("Failed to submit response:", error);
     alert(`Couldn't submit your response: ${error.message}`);
