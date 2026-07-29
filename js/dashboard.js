@@ -24,7 +24,9 @@ function toISODate(date) {
 async function fetchProjects() {
   const { data, error } = await supabaseClient
     .from("projects")
-    .select("id, name, status, next_milestone, next_milestone_date, links")
+    .select(
+      "id, name, status, next_milestone, next_milestone_date, links, memory_problem_solved, memory_capabilities, memory_industries, memory_patterns, memory_time_note, memory_lessons"
+    )
     .order("name");
   if (error) throw error;
   return data;
@@ -132,6 +134,32 @@ function renderProjectDetail(project) {
       ${repoUrl ? '<p class="lead-detail-contact">Loading repo info…</p>' : ""}
     </div>
 
+    <h3>Agency Memory</h3>
+    <p class="lead-detail-contact">
+      A few notes for future you — no scoring or retrieval yet, just don't let it go unrecorded.
+    </p>
+    <form id="memory-form" class="dialog-form">
+      <label>What business problem was solved
+        <textarea name="problemSolved">${escapeHtml(project.memory_problem_solved || "")}</textarea>
+      </label>
+      <label>What capabilities it required
+        <textarea name="capabilities">${escapeHtml(project.memory_capabilities || "")}</textarea>
+      </label>
+      <label>What industries could reuse this
+        <textarea name="industries">${escapeHtml(project.memory_industries || "")}</textarea>
+      </label>
+      <label>Patterns that showed up
+        <textarea name="patterns">${escapeHtml(project.memory_patterns || "")}</textarea>
+      </label>
+      <label>How long it actually took
+        <textarea name="timeNote">${escapeHtml(project.memory_time_note || "")}</textarea>
+      </label>
+      <label>What you'd do differently
+        <textarea name="lessons">${escapeHtml(project.memory_lessons || "")}</textarea>
+      </label>
+      <button type="submit" class="btn btn-secondary">Save Agency Memory</button>
+    </form>
+
     <div class="dialog-actions">
       <button type="button" class="btn btn-secondary" data-close-dialog>Close</button>
     </div>
@@ -148,6 +176,26 @@ function renderProjectDetail(project) {
     }
     project.links = updatedLinks;
     renderProjectDetail(project);
+  });
+
+  document.getElementById("memory-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const updates = {
+      memory_problem_solved: formData.get("problemSolved") || null,
+      memory_capabilities: formData.get("capabilities") || null,
+      memory_industries: formData.get("industries") || null,
+      memory_patterns: formData.get("patterns") || null,
+      memory_time_note: formData.get("timeNote") || null,
+      memory_lessons: formData.get("lessons") || null,
+    };
+    const { error } = await supabaseClient.from("projects").update(updates).eq("id", project.id);
+    if (error) {
+      alert(`Couldn't save Agency Memory: ${error.message}`);
+      return;
+    }
+    Object.assign(project, updates);
+    alert("Saved.");
   });
 
   if (repoUrl) {
