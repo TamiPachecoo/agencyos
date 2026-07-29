@@ -28,7 +28,10 @@
   <main class="app-main">
     <form id="task-form" class="quick-entry-form">
       <label class="quick-entry-note">Task
-        <input type="text" name="title" placeholder="What needs doing?" required />
+        <div class="input-with-mic">
+          <input type="text" name="title" id="task-title-input" placeholder="What needs doing?" required />
+          <button type="button" id="mic-btn" class="mic-btn" title="Dictate task">🎤</button>
+        </div>
       </label>
       <label>Project
         <select name="projectId" id="task-project-select" required></select>

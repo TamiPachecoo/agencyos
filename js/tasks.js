@@ -127,6 +127,75 @@ document.getElementById("task-form").addEventListener("submit", async (event) =>
   await loadTasks();
 });
 
+// --- Voice input ---
+// Live dictation via the browser's built-in speech recognition — no audio
+// file is kept, just the resulting text, filled into the title field as you
+// talk. No API key or backend needed; support varies by browser (best in
+// Chrome/Edge).
+
+const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function setupVoiceInput() {
+  const micBtn = document.getElementById("mic-btn");
+  const titleInput = document.getElementById("task-title-input");
+
+  if (!SpeechRecognitionImpl) {
+    micBtn.disabled = true;
+    micBtn.title = "Voice input isn't supported in this browser";
+    return;
+  }
+
+  let recognition = null;
+  let isRecording = false;
+  let finalTranscript = "";
+
+  function stopRecording() {
+    isRecording = false;
+    micBtn.classList.remove("recording");
+    micBtn.textContent = "🎤";
+  }
+
+  micBtn.addEventListener("click", () => {
+    if (isRecording) {
+      recognition.stop();
+      return;
+    }
+
+    recognition = new SpeechRecognitionImpl();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || "en-US";
+    finalTranscript = titleInput.value ? `${titleInput.value} ` : "";
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += `${transcript} `;
+        } else {
+          interim += transcript;
+        }
+      }
+      titleInput.value = (finalTranscript + interim).replace(/\s+/g, " ").trim();
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      stopRecording();
+    };
+
+    recognition.onend = stopRecording;
+
+    recognition.start();
+    isRecording = true;
+    micBtn.classList.add("recording");
+    micBtn.textContent = "⏹";
+  });
+}
+
+setupVoiceInput();
+
 loadTasks().catch((error) => {
   console.error("Failed to load tasks:", error);
   document.getElementById("task-board").innerHTML =

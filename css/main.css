@@ -601,3 +601,48 @@ dialog h3 {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Voice input */
+
+.input-with-mic {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.input-with-mic input {
+  flex: 1;
+}
+
+.mic-btn {
+  flex: 0 0 auto;
+  width: 38px;
+  font-size: var(--font-size-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.mic-btn:hover {
+  background: var(--color-bg-subtle);
+}
+
+.mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mic-btn.recording {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger);
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+  }
+}
