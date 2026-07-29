@@ -24,7 +24,7 @@ async function init() {
     // Check if already submitted
     const { data: responses, error: responseError } = await supabaseClient
       .from("questionnaire_responses")
-      .select("id")
+      .select("id", { count: "exact" })
       .eq("questionnaire_id", questionnaire.id)
       .limit(1);
 

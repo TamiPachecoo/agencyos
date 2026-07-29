@@ -237,7 +237,8 @@ async function renderProjectDetail(project) {
         btn.disabled = true;
         btn.textContent = "Uploading…";
 
-        const token = crypto.getRandomValues(new Uint8Array(16)).reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
+        const randomBytes = crypto.getRandomValues(new Uint8Array(16));
+        const token = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
         const filePath = `${project.id}/${token}-${file.name}`;
 
         const { error: uploadError } = await supabaseClient.storage
@@ -272,7 +273,8 @@ async function renderProjectDetail(project) {
     const copyBtn = event.target.closest("[data-copy-link]");
     if (copyBtn) {
       const token = copyBtn.dataset.copyLink;
-      const link = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}questionnaire.html?token=${token}`;
+      const baseUrl = window.location.origin;
+      const link = `${baseUrl}/pages/questionnaire.html?token=${token}`;
       navigator.clipboard.writeText(link);
       const originalText = copyBtn.textContent;
       copyBtn.textContent = "Copied!";
