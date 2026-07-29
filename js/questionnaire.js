@@ -74,13 +74,23 @@ async function loadZipQuestionnaire(container, questionnaire) {
       .getPublicUrl(questionnaire.file_path);
 
     const fileUrl = data.publicUrl;
+    console.log("ZIP questionnaire file path:", questionnaire.file_path);
+    console.log("Fetching ZIP from URL:", fileUrl);
 
     // Show loading indicator
     container.innerHTML = '<div class="loading"><p>Loading questionnaire...</p></div>';
 
     // Fetch the ZIP file
     const response = await fetch(fileUrl);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    console.log("ZIP fetch response status:", response.status);
+    if (!response.ok) {
+      console.error("HTTP error details:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: fileUrl
+      });
+      throw new Error(`HTTP ${response.status}`);
+    }
 
     const zipArrayBuffer = await response.arrayBuffer();
     const zip = new JSZip();
@@ -217,10 +227,21 @@ async function loadHtmlQuestionnaire(container, questionnaire) {
       .getPublicUrl(questionnaire.file_path);
 
     const fileUrl = data.publicUrl;
+    console.log("Questionnaire file path:", questionnaire.file_path);
+    console.log("Fetching from URL:", fileUrl);
 
     // Fetch the HTML content
     const response = await fetch(fileUrl);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    console.log("Fetch response status:", response.status);
+    if (!response.ok) {
+      console.error("HTTP error details:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: fileUrl,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      throw new Error(`HTTP ${response.status}`);
+    }
 
     let htmlContent = await response.text();
 
