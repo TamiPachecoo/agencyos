@@ -162,6 +162,21 @@ body {
   background: var(--color-bg-subtle);
 }
 
+.btn-danger {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-border);
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger);
+}
+
+.dialog-actions .btn-danger {
+  margin-right: auto;
+}
+
 /* Pipeline board */
 
 .pipeline-board {

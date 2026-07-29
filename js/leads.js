@@ -11,6 +11,16 @@ const PROTOTYPE_STATUSES = ["not_started", "building", "ready_to_present", "pres
 
 let leadsCache = [];
 
+function escapeHtml(value) {
+  if (value == null) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function fetchLeads() {
   const { data, error } = await supabaseClient
     .from("leads")
@@ -47,13 +57,13 @@ function renderLeadCard(lead) {
   card.type = "button";
   card.className = "lead-card";
   card.innerHTML = `
-    <strong>${lead.business_name || lead.contact_name}</strong>
-    ${lead.business_name ? `<span class="lead-card-contact">${lead.contact_name}</span>` : ""}
+    <strong>${escapeHtml(lead.business_name || lead.contact_name)}</strong>
+    ${lead.business_name ? `<span class="lead-card-contact">${escapeHtml(lead.contact_name)}</span>` : ""}
     <div class="lead-card-meta">
-      ${lead.source ? `<span class="tag">${lead.source}</span>` : "<span></span>"}
+      ${lead.source ? `<span class="tag">${escapeHtml(lead.source)}</span>` : "<span></span>"}
       <span class="lead-card-notes">${notesCount} note${notesCount === 1 ? "" : "s"}</span>
     </div>
-    ${lead.prototype_status ? `<span class="badge badge-progress">${formatLabel(lead.prototype_status)}</span>` : ""}
+    ${lead.prototype_status ? `<span class="badge badge-progress">${escapeHtml(formatLabel(lead.prototype_status))}</span>` : ""}
   `;
   card.addEventListener("click", () => openLeadDetail(lead.id));
   return card;
@@ -108,13 +118,26 @@ function renderLeadDetail(lead) {
   const container = document.getElementById("lead-detail-content");
 
   container.innerHTML = `
-    <h2>${lead.business_name || lead.contact_name}</h2>
-    ${lead.business_name ? `<p class="lead-detail-contact">${lead.contact_name}</p>` : ""}
-    <p class="lead-detail-contact">
-      ${contactInfo.email ? `${contactInfo.email}` : ""}
-      ${contactInfo.phone ? ` · ${contactInfo.phone}` : ""}
-      ${lead.source ? ` · via ${lead.source}` : ""}
-    </p>
+    <h2>${escapeHtml(lead.business_name || lead.contact_name)}</h2>
+
+    <form id="contact-form" class="dialog-form">
+      <label>Contact name
+        <input type="text" name="contactName" value="${escapeHtml(lead.contact_name)}" required />
+      </label>
+      <label>Business name
+        <input type="text" name="businessName" value="${escapeHtml(lead.business_name || "")}" />
+      </label>
+      <label>Source
+        <input type="text" name="source" value="${escapeHtml(lead.source || "")}" />
+      </label>
+      <label>Email
+        <input type="email" name="email" value="${escapeHtml(contactInfo.email || "")}" />
+      </label>
+      <label>Phone
+        <input type="tel" name="phone" value="${escapeHtml(contactInfo.phone || "")}" />
+      </label>
+      <button type="submit" class="btn btn-secondary">Save contact info</button>
+    </form>
 
     <label>Stage
       <select id="stage-select">
@@ -128,7 +151,9 @@ function renderLeadDetail(lead) {
     <div class="notes-log">
       ${
         notes.length
-          ? notes.map((n) => `<div class="note"><span class="note-date">${n.date}</span><p>${n.text}</p></div>`).join("")
+          ? notes
+              .map((n) => `<div class="note"><span class="note-date">${escapeHtml(n.date)}</span><p>${escapeHtml(n.text)}</p></div>`)
+              .join("")
           : '<p class="lead-detail-contact">No notes yet.</p>'
       }
     </div>
@@ -148,10 +173,10 @@ function renderLeadDetail(lead) {
         </select>
       </label>
       <label>Link
-        <input type="url" name="link" value="${lead.prototype_link || ""}" placeholder="Repo or preview URL" />
+        <input type="url" name="link" value="${escapeHtml(lead.prototype_link || "")}" placeholder="Repo or preview URL" />
       </label>
       <label>What it demonstrates
-        <textarea name="note">${lead.prototype_note || ""}</textarea>
+        <textarea name="note">${escapeHtml(lead.prototype_note || "")}</textarea>
       </label>
       <button type="submit" class="btn btn-secondary">Save prototype info</button>
     </form>
@@ -159,9 +184,44 @@ function renderLeadDetail(lead) {
     ${lead.client_id ? '<p class="lead-detail-contact">✓ Converted to client</p>' : ""}
 
     <div class="dialog-actions">
+      <button type="button" class="btn btn-danger" id="delete-lead-btn">Delete lead</button>
       <button type="button" class="btn btn-secondary" data-close-dialog>Close</button>
     </div>
   `;
+
+  document.getElementById("contact-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const { error } = await supabaseClient
+      .from("leads")
+      .update({
+        contact_name: formData.get("contactName"),
+        business_name: formData.get("businessName") || null,
+        source: formData.get("source") || null,
+        contact_info: {
+          email: formData.get("email") || null,
+          phone: formData.get("phone") || null,
+        },
+      })
+      .eq("id", lead.id);
+    if (error) {
+      alert(`Couldn't save contact info: ${error.message}`);
+      return;
+    }
+    await loadBoard();
+    openLeadDetail(lead.id);
+  });
+
+  document.getElementById("delete-lead-btn").addEventListener("click", async () => {
+    if (!confirm(`Delete ${lead.business_name || lead.contact_name}? This can't be undone.`)) return;
+    const { error } = await supabaseClient.from("leads").delete().eq("id", lead.id);
+    if (error) {
+      alert(`Couldn't delete lead: ${error.message}`);
+      return;
+    }
+    await loadBoard();
+    leadDetailDialog.close();
+  });
 
   document.getElementById("stage-select").addEventListener("change", async (event) => {
     const newStage = event.target.value;
@@ -257,9 +317,12 @@ async function convertToClient(lead) {
 }
 
 // --- Dialog close buttons ---
+// Delegated so it also covers close buttons inside dynamically rendered
+// dialog content (e.g. the lead detail dialog), not just ones present at load.
 
-document.querySelectorAll("[data-close-dialog]").forEach((btn) => {
-  btn.addEventListener("click", () => btn.closest("dialog").close());
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-close-dialog]");
+  if (btn) btn.closest("dialog").close();
 });
 
 loadBoard().catch((error) => {
