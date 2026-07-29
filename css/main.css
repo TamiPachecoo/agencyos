@@ -682,3 +682,44 @@ dialog h3 {
     box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
   }
 }
+
+.questionnaires-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.questionnaire-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.questionnaire-info {
+  flex: 1;
+}
+
+.questionnaire-name {
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-1) 0;
+  word-break: break-word;
+}
+
+.questionnaire-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.btn-danger {
+  color: var(--color-danger);
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-subtle);
+}

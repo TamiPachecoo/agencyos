@@ -115,9 +115,53 @@ function openProjectDetail(project) {
   projectDetailDialog.showModal();
 }
 
-function renderProjectDetail(project) {
+async function fetchProjectQuestionnaires(projectId) {
+  const { data, error } = await supabaseClient
+    .from("project_questionnaires")
+    .select("id, file_name, share_token, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function renderProjectDetail(project) {
   const container = document.getElementById("project-detail-content");
   const repoUrl = (project.links && project.links.github) || "";
+
+  let questionnairesHtml = "";
+  try {
+    const questionnaires = await fetchProjectQuestionnaires(project.id);
+    questionnairesHtml = `
+      <h3>Client Questionnaires</h3>
+      <p class="lead-detail-contact">Upload custom questionnaires for clients to complete.</p>
+      <form id="questionnaire-upload-form" class="dialog-form">
+        <label>Upload questionnaire file
+          <input type="file" name="questionnaireFile" accept=".html,.pdf,.docx" required />
+        </label>
+        <button type="submit" class="btn btn-secondary">Upload</button>
+      </form>
+      ${questionnaires.length > 0 ? `
+        <div id="questionnaires-list" class="questionnaires-list">
+          ${questionnaires.map((q) => `
+            <div class="questionnaire-item">
+              <div class="questionnaire-info">
+                <p class="questionnaire-name">${escapeHtml(q.file_name)}</p>
+                <p class="lead-detail-contact">Uploaded ${new Date(q.created_at).toLocaleDateString()}</p>
+              </div>
+              <div class="questionnaire-actions">
+                <button type="button" class="btn btn-link" data-copy-link="${q.share_token}">Copy link</button>
+                <button type="button" class="btn btn-link btn-danger" data-delete-questionnaire="${q.id}">Delete</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      ` : '<p class="lead-detail-contact">No questionnaires uploaded yet.</p>'}
+    `;
+  } catch (error) {
+    console.error("Failed to fetch questionnaires:", error);
+    questionnairesHtml = `<p style="color: var(--color-danger);">Couldn't load questionnaires.</p>`;
+  }
 
   container.innerHTML = `
     <h2>${escapeHtml(project.name)}</h2>
@@ -133,6 +177,8 @@ function renderProjectDetail(project) {
     <div id="repo-info">
       ${repoUrl ? '<p class="lead-detail-contact">Loading repo info…</p>' : ""}
     </div>
+
+    ${questionnairesHtml}
 
     <h3>Agency Memory</h3>
     <p class="lead-detail-contact">
@@ -176,6 +222,82 @@ function renderProjectDetail(project) {
     }
     project.links = updatedLinks;
     renderProjectDetail(project);
+  });
+
+  const uploadForm = document.getElementById("questionnaire-upload-form");
+  if (uploadForm) {
+    uploadForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fileInput = uploadForm.querySelector('input[name="questionnaireFile"]');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      try {
+        const btn = uploadForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = "Uploading…";
+
+        const token = crypto.getRandomValues(new Uint8Array(16)).reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
+        const filePath = `${project.id}/${token}-${file.name}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from("questionnaires")
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { error: dbError } = await supabaseClient
+          .from("project_questionnaires")
+          .insert({
+            project_id: project.id,
+            file_name: file.name,
+            file_path: filePath,
+            share_token: token,
+          });
+
+        if (dbError) throw dbError;
+
+        renderProjectDetail(project);
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert(`Couldn't upload questionnaire: ${error.message}`);
+        const btn = uploadForm.querySelector('button[type="submit"]');
+        btn.disabled = false;
+        btn.textContent = "Upload";
+      }
+    });
+  }
+
+  document.addEventListener("click", async (event) => {
+    const copyBtn = event.target.closest("[data-copy-link]");
+    if (copyBtn) {
+      const token = copyBtn.dataset.copyLink;
+      const link = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}questionnaire.html?token=${token}`;
+      navigator.clipboard.writeText(link);
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+      }, 2000);
+    }
+
+    const deleteBtn = event.target.closest("[data-delete-questionnaire]");
+    if (deleteBtn) {
+      const questionnaireId = deleteBtn.dataset.deleteQuestionnaire;
+      if (confirm("Delete this questionnaire? Existing responses will be preserved.")) {
+        try {
+          const { error } = await supabaseClient
+            .from("project_questionnaires")
+            .delete()
+            .eq("id", questionnaireId);
+          if (error) throw error;
+          renderProjectDetail(project);
+        } catch (error) {
+          console.error("Delete failed:", error);
+          alert(`Couldn't delete questionnaire: ${error.message}`);
+        }
+      }
+    }
   });
 
   document.getElementById("memory-form").addEventListener("submit", async (event) => {

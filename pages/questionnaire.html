@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Questionnaire</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: var(--color-bg);
+    }
+    #questionnaire-container {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .loading, .error {
+      padding: var(--space-6);
+      text-align: center;
+      max-width: 560px;
+    }
+    .error {
+      color: var(--color-danger);
+    }
+  </style>
+</head>
+<body>
+  <div id="questionnaire-content">
+    <div class="loading">
+      <p>Loading questionnaire…</p>
+    </div>
+  </div>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/questionnaire.js"></script>
+</body>
+</html>
