@@ -110,11 +110,12 @@ Same direction as before: minimal, calm, premium — Linear/Stripe/Notion-inspir
 ## Project structure (current)
 
 ```
-/css       — stylesheets, design tokens
-/js        — vanilla JS, page logic
-/shared    — reusable components (per charter: hand-reuse until built 3x, then formalize)
-/pages     — additional HTML pages beyond the dashboard
-index.html — dashboard shell (entry point)
+/css              — stylesheets, design tokens
+/js               — vanilla JS, page logic
+/shared           — reusable components (per charter: hand-reuse until built 3x, then formalize)
+/pages            — additional HTML pages beyond the dashboard
+/.claude/skills   — Claude Code skills for this repo (e.g. agency-memory)
+index.html        — dashboard shell (entry point)
 ```
 
 ## Notes for future sessions
@@ -130,3 +131,4 @@ index.html — dashboard shell (entry point)
 - Clicking a dashboard project card opens a detail dialog (`dashboard.js`) where you can set a GitHub repo URL, stored in `projects.links.github`. If set, it fetches the repo's description, language breakdown, and README directly from GitHub's public REST API (`api.github.com`) client-side — no auth, unauthenticated rate limit (60 req/hr/IP), public repos only. All fetched content is escaped before rendering since it's external/untrusted input.
 - The Tasks page has a mic button (`js/tasks.js`) for live dictation into the task title via the browser's built-in `SpeechRecognition`/`webkitSpeechRecognition` API — no audio file is kept, no API key, no backend. Support varies by browser (best in Chrome/Edge); the button disables itself with an explanatory title when unsupported. If a "real" transcription pipeline (recorded audio + Whisper or similar, kept as a file) is ever wanted, that needs a Supabase Edge Function to keep the API key server-side plus a Storage bucket — deliberately not built now since the free browser-native approach covers the actual ask.
 - Step 7 (Agency Memory) is done: `projects` has six free-text columns — `memory_problem_solved`, `memory_capabilities`, `memory_industries`, `memory_patterns`, `memory_time_note`, `memory_lessons` — editable from the same project detail dialog as the repo link. Per charter, this is capture-only: no scoring, no retrieval, nothing reads it back yet. Lives on `projects` (not `clients`), since the charter's "every deliverable" framing maps to a project/engagement, not the business record.
+- `.claude/skills/agency-memory/SKILL.md` is a Claude Code skill that drafts those six memory fields from the current conversation after a client work session, shows the draft for review, and only writes to Supabase once approved — it never auto-saves. Run it right after a discovery call debrief or a project wrap-up rather than filling the fields in cold later, since the point is to capture what's fresh.
