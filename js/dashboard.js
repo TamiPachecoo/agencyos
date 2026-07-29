@@ -269,7 +269,13 @@ async function renderProjectDetail(project) {
         renderProjectDetail(project);
       } catch (error) {
         console.error("Upload failed:", error);
-        alert(`Couldn't upload questionnaire: ${error.message}`);
+        let message = error.message;
+        if (message.includes("Bucket not found")) {
+          message = "Storage bucket is initializing. Please try again in a moment.";
+          // Try to initialize the bucket
+          await initializeQuestionnairesBucket();
+        }
+        alert(`Couldn't upload questionnaire: ${message}`);
         const btn = uploadForm.querySelector('button[type="submit"]');
         btn.disabled = false;
         btn.textContent = "Upload";
@@ -454,6 +460,24 @@ document.addEventListener("click", (event) => {
   const btn = event.target.closest("[data-close-dialog]");
   if (btn) btn.closest("dialog").close();
 });
+
+// Initialize storage bucket for questionnaires
+async function initializeQuestionnairesBucket() {
+  try {
+    // Try to create the bucket via Edge Function
+    const response = await fetch(
+      'https://kndpvdixtlirwgsqvgjh.supabase.co/functions/v1/init-questionnaire-bucket',
+      { method: 'POST' }
+    );
+    if (response.ok) {
+      console.log('Questionnaires bucket initialized');
+    }
+  } catch (error) {
+    console.log('Questionnaires bucket initialization note:', error.message);
+  }
+}
+
+initializeQuestionnairesBucket();
 
 renderDashboard().catch((error) => {
   console.error("Failed to load dashboard:", error);
