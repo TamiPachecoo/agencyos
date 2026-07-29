@@ -110,8 +110,8 @@ async function renderDashboard() {
 
 const projectDetailDialog = document.getElementById("project-detail-dialog");
 
-function openProjectDetail(project) {
-  renderProjectDetail(project);
+async function openProjectDetail(project) {
+  await renderProjectDetail(project);
   projectDetailDialog.showModal();
 }
 
@@ -240,6 +240,8 @@ async function renderProjectDetail(project) {
         btn.disabled = true;
         btn.textContent = "Uploading…";
 
+        console.log("Starting upload for project:", project.id, "file:", file.name);
+
         const randomBytes = crypto.getRandomValues(new Uint8Array(16));
         const token = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
@@ -248,25 +250,52 @@ async function renderProjectDetail(project) {
         const displayName = isZip ? file.name.replace(/\.zip$/i, '') : file.name;
         const filePath = `${project.id}/${token}-${file.name}`;
 
+        console.log("Uploading file to storage:", filePath);
+
         const { error: uploadError } = await supabaseClient.storage
           .from("questionnaires")
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Storage upload error:", uploadError);
+          throw uploadError;
+        }
 
-        const { error: dbError } = await supabaseClient
+        console.log("File uploaded, saving to database");
+
+        const insertData = {
+          project_id: project.id,
+          file_name: displayName,
+          file_path: filePath,
+          share_token: token,
+        };
+
+        // Only include metadata if it's a ZIP file
+        if (isZip) {
+          insertData.metadata = { is_zip: true };
+        }
+
+        const { error: dbError, data: insertedData } = await supabaseClient
           .from("project_questionnaires")
-          .insert({
-            project_id: project.id,
-            file_name: displayName,
-            file_path: filePath,
-            share_token: token,
-            metadata: isZip ? { is_zip: true } : null,
-          });
+          .insert(insertData)
+          .select();
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error("Database insert error:", dbError);
+          throw dbError;
+        }
 
-        renderProjectDetail(project);
+        console.log("Questionnaire saved:", insertedData);
+
+        // Clear the file input
+        fileInput.value = "";
+
+        // Re-fetch and re-render to show the new questionnaire
+        console.log("Re-rendering project detail");
+        await renderProjectDetail(project);
+
+        btn.disabled = false;
+        btn.textContent = "Upload";
       } catch (error) {
         console.error("Upload failed:", error);
         let message = error.message;
