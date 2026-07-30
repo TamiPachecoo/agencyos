@@ -6,6 +6,11 @@
   <title>Agency OS</title>
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="shared/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Agency OS" />
 </head>
 <body>
   <header class="app-header">
@@ -35,5 +40,10 @@
   <script src="shared/vendor/supabase.js"></script>
   <script src="js/supabaseClient.js"></script>
   <script src="js/dashboard.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
 </body>
 </html>
