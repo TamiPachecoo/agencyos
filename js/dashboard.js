@@ -84,6 +84,20 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
   return card;
 }
 
+function renderNewProjectCard() {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "card project-card new-project-card";
+  card.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: var(--space-3); color: var(--color-text-muted);">
+      <span style="font-size: var(--font-size-xl); line-height: 1;">+</span>
+      <span style="font-size: var(--font-size-sm);">New Project</span>
+    </div>
+  `;
+  card.addEventListener("click", () => openProjectForm(null));
+  return card;
+}
+
 async function renderDashboard() {
   const grid = document.getElementById("project-grid");
   const [projects, hoursByProject, openTasksByProject] = await Promise.all([
@@ -93,6 +107,7 @@ async function renderDashboard() {
   ]);
 
   grid.replaceChildren(
+    renderNewProjectCard(),
     ...projects.map((project) =>
       renderProjectCard(project, hoursByProject[project.id] || 0, openTasksByProject[project.id] || 0)
     )
@@ -104,6 +119,99 @@ async function renderDashboard() {
     month: "long",
     day: "numeric",
   });
+}
+
+// --- Project form dialog: create/edit project details ---
+
+const projectFormDialog = document.getElementById("project-form-dialog");
+
+async function openProjectForm(project) {
+  await renderProjectForm(project);
+  projectFormDialog.showModal();
+}
+
+async function renderProjectForm(project) {
+  const isNew = !project;
+  const container = document.getElementById("project-form-content");
+  const title = isNew ? "New Project" : `Edit ${escapeHtml(project.name)}`;
+  const name = project?.name || "";
+  const status = project?.status || "active";
+  const nextMilestone = project?.next_milestone || "";
+  const nextMilestoneDate = project?.next_milestone_date || "";
+
+  container.innerHTML = `
+    <h2>${escapeHtml(title)}</h2>
+    <form id="project-form" class="dialog-form">
+      <label>Project name
+        <input type="text" name="name" value="${escapeHtml(name)}" placeholder="e.g., Camarim Mineiro" required />
+      </label>
+      <label>Status
+        <select name="status" required>
+          <option value="active" ${status === "active" ? "selected" : ""}>Active</option>
+          <option value="in_progress" ${status === "in_progress" ? "selected" : ""}>In Progress</option>
+          <option value="paused" ${status === "paused" ? "selected" : ""}>Paused</option>
+          <option value="completed" ${status === "completed" ? "selected" : ""}>Completed</option>
+        </select>
+      </label>
+      <label>Next milestone
+        <input type="text" name="nextMilestone" value="${escapeHtml(nextMilestone)}" placeholder="e.g., Website launch" />
+      </label>
+      <label>Milestone date
+        <input type="date" name="nextMilestoneDate" value="${escapeHtml(nextMilestoneDate)}" />
+      </label>
+      <div class="dialog-actions">
+        ${isNew ? "" : `<button type="button" class="btn btn-danger" id="delete-project">Delete</button>`}
+        <button type="button" class="btn btn-secondary" data-close-dialog>Cancel</button>
+        <button type="submit" class="btn btn-primary">${isNew ? "Create" : "Save"}</button>
+      </div>
+    </form>
+  `;
+
+  const form = document.getElementById("project-form");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const projectData = {
+      name: formData.get("name").trim(),
+      status: formData.get("status"),
+      next_milestone: formData.get("nextMilestone").trim() || null,
+      next_milestone_date: formData.get("nextMilestoneDate") || null,
+    };
+
+    try {
+      if (isNew) {
+        const { error } = await supabaseClient.from("projects").insert([projectData]);
+        if (error) throw error;
+        projectFormDialog.close();
+        renderDashboard();
+      } else {
+        const { error } = await supabaseClient.from("projects").update(projectData).eq("id", project.id);
+        if (error) throw error;
+        projectFormDialog.close();
+        renderDashboard();
+      }
+    } catch (error) {
+      console.error("Failed to save project:", error);
+      alert(`Couldn't save project: ${error.message}`);
+    }
+  });
+
+  if (!isNew) {
+    const deleteBtn = document.getElementById("delete-project");
+    deleteBtn.addEventListener("click", async () => {
+      if (confirm(`Delete "${escapeHtml(project.name)}"? This cannot be undone.`)) {
+        try {
+          const { error } = await supabaseClient.from("projects").delete().eq("id", project.id);
+          if (error) throw error;
+          projectFormDialog.close();
+          renderDashboard();
+        } catch (error) {
+          console.error("Failed to delete project:", error);
+          alert(`Couldn't delete project: ${error.message}`);
+        }
+      }
+    });
+  }
 }
 
 // --- Project detail dialog: GitHub repo link, description, language breakdown ---
@@ -210,6 +318,7 @@ async function renderProjectDetail(project) {
     </form>
 
     <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" id="edit-project-btn">Edit</button>
       <button type="button" class="btn btn-secondary" data-close-dialog>Close</button>
     </div>
   `;
@@ -376,6 +485,11 @@ async function renderProjectDetail(project) {
     }
     Object.assign(project, updates);
     alert("Saved.");
+  });
+
+  document.getElementById("edit-project-btn").addEventListener("click", () => {
+    projectDetailDialog.close();
+    openProjectForm(project);
   });
 
   if (repoUrl) {

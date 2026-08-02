@@ -99,6 +99,17 @@ body {
   cursor: pointer;
 }
 
+.new-project-card {
+  min-height: 200px;
+  border: 2px dashed var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.new-project-card:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .card h2 {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
