@@ -59,9 +59,15 @@ function renderMonthlyOverview(payments, expenses) {
     const received = payments
       .filter((p) => p.paid_date && monthKey(p.paid_date) === key)
       .reduce((sum, p) => sum + Number(p.amount), 0);
+
     const spent = expenses
-      .filter((e) => monthKey(e.expense_date) === key)
+      .filter((e) => {
+        const expenseMonth = monthKey(e.expense_date);
+        // Include if expense is in this month OR if it's recurring and started on/before this month
+        return expenseMonth === key || (e.recurring && expenseMonth <= key);
+      })
       .reduce((sum, e) => sum + Number(e.amount), 0);
+
     return { key, expected, received, spent, net: received - spent };
   });
 
