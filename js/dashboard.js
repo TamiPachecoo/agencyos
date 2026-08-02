@@ -71,6 +71,8 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
   const card = document.createElement("button");
   card.type = "button";
   card.className = "card project-card";
+  const repoUrl = (project.links && project.links.github) || "";
+
   card.innerHTML = `
     <span class="badge ${badgeClass}">${escapeHtml(project.status.replace("_", " "))}</span>
     <h2>${escapeHtml(project.name)}</h2>
@@ -79,9 +81,34 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
       <div class="card-meta-row"><span>Hours this week</span><span>${hoursThisWeek}</span></div>
       <div class="card-meta-row"><span>Open tasks</span><span>${openTasks}</span></div>
     </div>
+    <div id="languages-${project.id}"></div>
   `;
   card.addEventListener("click", () => openProjectDetail(project));
+
+  // Load GitHub languages if repo is linked
+  if (repoUrl) {
+    loadLanguagesForCard(repoUrl, project.id);
+  }
+
   return card;
+}
+
+async function loadLanguagesForCard(repoUrl, projectId) {
+  const container = document.getElementById(`languages-${projectId}`);
+  if (!container) return;
+
+  const parsed = parseGithubRepo(repoUrl);
+  if (!parsed) return;
+
+  try {
+    const info = await fetchRepoInfo(parsed.owner, parsed.repo);
+    if (info.notFound || Object.keys(info.languages).length === 0) return;
+
+    const bar = renderLanguageBar(info.languages);
+    container.innerHTML = `<div style="margin-top: var(--space-4); font-size: var(--font-size-xs);">${bar}</div>`;
+  } catch (error) {
+    // Silently fail if we can't fetch repo info (rate limit, private repo, etc)
+  }
 }
 
 function renderNewProjectCard() {
