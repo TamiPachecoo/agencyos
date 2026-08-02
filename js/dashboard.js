@@ -71,8 +71,6 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
   const card = document.createElement("button");
   card.type = "button";
   card.className = "card project-card";
-  const repoUrl = (project.links && project.links.github) || "";
-
   card.innerHTML = `
     <span class="badge ${badgeClass}">${escapeHtml(project.status.replace("_", " "))}</span>
     <h2>${escapeHtml(project.name)}</h2>
@@ -84,12 +82,6 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
     <div id="languages-${project.id}"></div>
   `;
   card.addEventListener("click", () => openProjectDetail(project));
-
-  // Load GitHub languages if repo is linked
-  if (repoUrl) {
-    loadLanguagesForCard(repoUrl, project.id);
-  }
-
   return card;
 }
 
@@ -133,12 +125,22 @@ async function renderDashboard() {
     fetchOpenTaskCounts(),
   ]);
 
-  grid.replaceChildren(
+  const cards = [
     renderNewProjectCard(),
     ...projects.map((project) =>
       renderProjectCard(project, hoursByProject[project.id] || 0, openTasksByProject[project.id] || 0)
     )
-  );
+  ];
+
+  grid.replaceChildren(...cards);
+
+  // Load languages for all projects after they're added to the DOM
+  projects.forEach((project) => {
+    const repoUrl = (project.links && project.links.github) || "";
+    if (repoUrl) {
+      loadLanguagesForCard(repoUrl, project.id);
+    }
+  });
 
   const dateEl = document.getElementById("today");
   dateEl.textContent = new Date().toLocaleDateString(undefined, {
