@@ -1,0 +1,47 @@
+Run the weekly technical health check across all active Agency OS projects using connected sources that are actually available.
+
+Inspect GitHub, Vercel, Supabase, and other directly connected project infrastructure when available.
+
+Check for:
+- failed/unhealthy deployments
+- build errors
+- recent commits not in production
+- environment/configuration problems
+- database/authentication problems
+- security warnings
+- unresolved technical problems
+- stale/out-of-sync projects
+- critical workflows where practical
+
+Never invent checks. If something cannot be inspected, say so and use Unknown where appropriate.
+
+Produce:
+1. Human-readable project report.
+2. Prioritized What I Should Address First section.
+3. JSON:
+{
+  "checked_at": "ISO timestamp",
+  "overall_status": "healthy | needs_attention | critical | unknown",
+  "summary": "...",
+  "projects_checked": 0,
+  "sources_checked": [],
+  "findings": [
+    {
+      "project_name": "...",
+      "severity": "critical | needs_attention | healthy | unknown",
+      "category": "deployment | database | auth | configuration | workflow | security | stale | other",
+      "title": "...",
+      "details": "...",
+      "likely_cause": null,
+      "recommended_action": "...",
+      "source_refs": []
+    }
+  ]
+}
+
+When persistence is available:
+- insert one row in `technical_health_reports`
+- match each finding to an existing project
+- insert findings into `technical_health_findings`
+- never create duplicate projects just to force matching
+- preserve unresolved historical findings until resolved

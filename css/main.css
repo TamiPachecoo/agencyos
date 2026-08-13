@@ -1301,6 +1301,11 @@ a.kpi-tile.kpi-tile-link:hover {
     gap: var(--space-3);
     overflow-x: auto;
     padding-bottom: 2px;
+    /* Health is the 7th item — with Impact it no longer fits an ~390px
+       screen, so this scrolls (see overflow-x above). The fade hints
+       there's more without needing a scroll indicator/JS. */
+    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
   }
 
   .app-header-right {

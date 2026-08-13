@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Health</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="stylesheet" href="../css/health.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="../shared/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Agency OS" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html">Time</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="finance.html">Finance</a>
+        <a href="impact.html">Impact</a>
+        <a href="health.html" class="active">Health</a>
+      </nav>
+    </div>
+    <span class="auth-status" id="auth-status"></span>
+  </header>
+
+  <main class="app-main health-main" id="health-main">
+    <!-- Replaced entirely with a sign-in prompt when signed out — every
+         technical_health_* table is RLS-restricted to authenticated sessions. -->
+    <section class="health-heading">
+      <div>
+        <p class="eyebrow">Technical Operations</p>
+        <h2>System Health</h2>
+        <p class="health-subtitle">Weekly checks, unresolved findings, and technical history.</p>
+      </div>
+      <div class="last-check" id="last-check">No health check recorded yet</div>
+    </section>
+
+    <section class="health-summary">
+      <article class="health-stat health-stat-critical"><span>Critical</span><strong id="critical-count">0</strong><small>immediate attention</small></article>
+      <article class="health-stat health-stat-warning"><span>Needs attention</span><strong id="attention-count">0</strong><small>review soon</small></article>
+      <article class="health-stat health-stat-healthy"><span>Healthy</span><strong id="healthy-count">0</strong><small>no open findings</small></article>
+      <article class="health-stat"><span>Open findings</span><strong id="open-count">0</strong><small>across all projects</small></article>
+    </section>
+
+    <section class="health-section">
+      <div class="health-section-head">
+        <div><p class="eyebrow">Priority queue</p><h3>Needs Your Attention</h3></div>
+      </div>
+      <div id="attention-list" class="attention-list"></div>
+    </section>
+
+    <section class="health-section">
+      <div class="health-section-head">
+        <div><p class="eyebrow">Portfolio</p><h3>Project Health</h3></div>
+      </div>
+      <div id="project-health-grid" class="project-health-grid"></div>
+    </section>
+
+    <section class="health-section">
+      <div class="health-section-head">
+        <div><p class="eyebrow">History</p><h3>Weekly Report Archive</h3></div>
+      </div>
+      <div id="report-archive" class="report-archive"></div>
+    </section>
+  </main>
+
+  <dialog id="finding-dialog" class="dialog-wide"><div id="finding-dialog-content"></div></dialog>
+  <dialog id="report-dialog" class="dialog-wide"><div id="report-dialog-content"></div></dialog>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/authState.js"></script>
+  <script src="../js/health.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("../sw.js");
+    }
+  </script>
+</body>
+</html>
