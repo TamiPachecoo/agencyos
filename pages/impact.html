@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Impact</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="stylesheet" href="../css/impact.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="../shared/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Agency OS" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html">Time</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="finance.html">Finance</a>
+        <a href="impact.html" class="active">Impact</a>
+      </nav>
+    </div>
+    <span class="auth-status" id="auth-status"></span>
+  </header>
+
+  <main class="app-main" id="impact-main">
+    <!-- Replaced entirely with a sign-in prompt when signed out. -->
+    <section class="kpi-row" id="impact-kpi-row" aria-label="Agency-wide impact"></section>
+
+    <section class="impact-section">
+      <div class="impact-section-head">
+        <h2>Hours saved by project</h2>
+      </div>
+      <div id="impact-hours-chart"></div>
+    </section>
+
+    <section class="impact-section">
+      <div class="impact-section-head">
+        <h2>Impact trend</h2>
+        <p class="lead-detail-contact">Total annualized hours saved across the portfolio, as measurements land.</p>
+      </div>
+      <div id="impact-trend-chart"></div>
+    </section>
+
+    <section class="impact-section" id="impact-workflows-section">
+      <div class="impact-section-head">
+        <h2>Workflows</h2>
+        <button type="button" class="btn btn-primary" id="add-workflow-btn">Add workflow</button>
+      </div>
+      <div id="impact-workflows-list"></div>
+    </section>
+
+    <section class="impact-section">
+      <div class="impact-section-head">
+        <h2>Evidence-quality breakdown</h2>
+      </div>
+      <div id="impact-evidence-chart"></div>
+    </section>
+
+    <section class="impact-section">
+      <div class="impact-section-head">
+        <h2>Portfolio Impact Matrix</h2>
+        <p class="lead-detail-contact">One row per project — annualized hours saved, split by evidence quality.</p>
+      </div>
+      <div class="impact-table-wrap">
+        <table class="time-table" id="impact-matrix-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Measured</th>
+              <th>Client Confirmed</th>
+              <th>Estimated</th>
+              <th>Total identified / yr</th>
+              <th>Freshness</th>
+            </tr>
+          </thead>
+          <tbody id="impact-matrix-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="impact-section">
+      <div class="impact-section-head">
+        <h2>Measurements due</h2>
+        <p class="lead-detail-contact">Missing baselines and measurements older than 60 days.</p>
+      </div>
+      <div id="impact-due-list"></div>
+    </section>
+
+    <section class="impact-section" id="sales-evidence-section">
+      <div class="impact-section-head">
+        <h2>Sales Evidence</h2>
+        <p class="lead-detail-contact">Pitch-ready proof, filterable for the case you're building.</p>
+      </div>
+      <div class="sales-evidence-filters">
+        <label>Project
+          <select id="sales-filter-project"><option value="">All projects</option></select>
+        </label>
+        <label>Evidence level
+          <select id="sales-filter-evidence">
+            <option value="">All evidence</option>
+            <option value="measured">Measured</option>
+            <option value="client_confirmed">Client Confirmed</option>
+            <option value="estimated">Estimated</option>
+          </select>
+        </label>
+        <label class="sales-filter-search">Industry / capability / problem
+          <input type="search" id="sales-filter-text" placeholder="e.g. field operations, payroll..." />
+        </label>
+      </div>
+      <div id="sales-evidence-list" class="sales-evidence-grid"></div>
+    </section>
+  </main>
+
+  <dialog id="workflow-form-dialog" class="dialog-wide">
+    <div id="workflow-form-content"></div>
+  </dialog>
+
+  <dialog id="measurement-form-dialog">
+    <div id="measurement-form-content"></div>
+  </dialog>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/authState.js"></script>
+  <script src="../js/impactCalc.js"></script>
+  <script src="../js/impactCharts.js"></script>
+  <script src="../js/impact.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("../sw.js");
+    }
+  </script>
+</body>
+</html>

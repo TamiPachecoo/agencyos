@@ -58,6 +58,41 @@ async function fetchHoursThisWeek() {
   return totals;
 }
 
+async function fetchPayments() {
+  const { data, error } = await supabaseClient.from("payments").select("id, project_id, amount, due_date, paid_date, note");
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchRecentTimeEntries(limit) {
+  const { data, error } = await supabaseClient
+    .from("time_entries")
+    .select("project_id, entry_date, hours, note, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+// Impact data is RLS-restricted to authenticated sessions — only fetch it if
+// signed in, and tell callers apart from "signed in but no data yet" so the
+// UI can show "Sign in to view impact data" instead of an empty state.
+async function fetchImpactDataIfAuthed(session) {
+  if (!session) return null;
+  const [{ data: workflows, error: workflowsError }, { data: measurements, error: measurementsError }] = await Promise.all([
+    supabaseClient.from("impact_workflows").select("*").eq("is_active", true),
+    supabaseClient.from("impact_measurements").select("*").order("measured_at"),
+  ]);
+  if (workflowsError) throw workflowsError;
+  if (measurementsError) throw measurementsError;
+
+  const measurementsByWorkflowId = {};
+  for (const m of measurements || []) {
+    (measurementsByWorkflowId[m.workflow_id] = measurementsByWorkflowId[m.workflow_id] || []).push(m);
+  }
+  return { workflows: workflows || [], measurementsByWorkflowId };
+}
+
 function formatMilestone(project) {
   if (!project.next_milestone) return "—";
   if (!project.next_milestone_date) return project.next_milestone;
@@ -66,7 +101,36 @@ function formatMilestone(project) {
   return `${project.next_milestone} — ${formatted}`;
 }
 
-function renderProjectCard(project, hoursThisWeek, openTasks) {
+// impactData is: undefined while signed-out, or { hasWorkflows, totalHours,
+// dominantEvidence, freshness } once signed in (freshness/totalHours may
+// still be null — e.g. workflows exist but none have a baseline yet).
+function renderCardImpactRow(impactData) {
+  if (impactData === undefined) {
+    return `<div class="card-meta-row"><span>Impact</span><span class="card-impact-signin"><a href="pages/signin.html?next=%2Findex.html">Sign in to view</a></span></div>`;
+  }
+  if (!impactData.hasWorkflows || impactData.totalHours == null) {
+    return `<div class="card-meta-row"><span>Impact</span><span class="impact-status-needed">Impact baseline needed</span></div>`;
+  }
+  return `
+    <div class="card-meta-row"><span>Impact</span><span>${formatImpactHours(impactData.totalHours)}</span></div>
+    <div class="card-meta-row card-meta-row-badges">
+      ${evidenceBadgeSmall(impactData.dominantEvidence)}
+      ${freshnessBadgeSmall(impactData.freshness)}
+    </div>
+  `;
+}
+
+function evidenceBadgeSmall(level) {
+  if (!level) return "";
+  return `<span class="evidence-badge evidence-badge-${level}">${EVIDENCE_LABELS[level] || level}</span>`;
+}
+
+function freshnessBadgeSmall(status) {
+  if (!status) return "";
+  return `<span class="freshness-badge freshness-${status}">${FRESHNESS_LABELS[status]}</span>`;
+}
+
+function renderProjectCard(project, hoursThisWeek, openTasks, impactData) {
   const badgeClass = project.status === "active" ? "badge-active" : "badge-progress";
   const card = document.createElement("button");
   card.type = "button";
@@ -78,11 +142,47 @@ function renderProjectCard(project, hoursThisWeek, openTasks) {
       <div class="card-meta-row"><span>Next</span><span>${escapeHtml(formatMilestone(project))}</span></div>
       <div class="card-meta-row"><span>Hours this week</span><span>${hoursThisWeek}</span></div>
       <div class="card-meta-row"><span>Open tasks</span><span>${openTasks}</span></div>
+      <div class="card-meta-row"><span>Technical health</span><span class="impact-status-unknown" title="Not tracked yet in this repo">Not tracked yet</span></div>
+      ${renderCardImpactRow(impactData)}
     </div>
     <div id="languages-${project.id}"></div>
   `;
   card.addEventListener("click", () => openProjectDetail(project));
   return card;
+}
+
+// Rolls a project's active workflows up into one summary for the card.
+function computeProjectImpactSummary(projectId, workflows) {
+  const projectWorkflows = workflows.filter((w) => w.project_id === projectId);
+  if (projectWorkflows.length === 0) return { hasWorkflows: false, totalHours: null, dominantEvidence: null, freshness: null };
+
+  let totalHours = 0;
+  let anyComputed = false;
+  const evidenceHours = { estimated: 0, client_confirmed: 0, measured: 0 };
+  let worstFreshness = "fresh";
+  const freshnessOrder = ["fresh", "review_soon", "stale", "baseline_needed"];
+
+  for (const workflow of projectWorkflows) {
+    const impact = computeWorkflowImpact(workflow);
+    if (impact.annualHoursSaved != null) {
+      totalHours += impact.annualHoursSaved;
+      evidenceHours[workflow.evidence_level] += impact.annualHoursSaved;
+      anyComputed = true;
+    }
+    const freshness = impactFreshnessStatus(workflow.last_measured_at);
+    if (freshnessOrder.indexOf(freshness) > freshnessOrder.indexOf(worstFreshness)) worstFreshness = freshness;
+  }
+
+  const dominantEvidence = anyComputed
+    ? Object.entries(evidenceHours).sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+
+  return {
+    hasWorkflows: true,
+    totalHours: anyComputed ? totalHours : null,
+    dominantEvidence,
+    freshness: worstFreshness,
+  };
 }
 
 async function loadLanguagesForCard(repoUrl, projectId) {
@@ -119,17 +219,28 @@ function renderNewProjectCard() {
 
 async function renderDashboard() {
   const grid = document.getElementById("project-grid");
-  const [projects, hoursByProject, openTasksByProject] = await Promise.all([
+  const session = await getAuthSession();
+  const [projects, hoursByProject, openTasksByProject, payments, recentTimeEntries, impactData] = await Promise.all([
     fetchProjects(),
     fetchHoursThisWeek(),
     fetchOpenTaskCounts(),
+    fetchPayments(),
+    fetchRecentTimeEntries(6),
+    fetchImpactDataIfAuthed(session),
   ]);
+
+  const workflows = impactData ? impactData.workflows : undefined;
 
   const cards = [
     renderNewProjectCard(),
     ...projects.map((project) =>
-      renderProjectCard(project, hoursByProject[project.id] || 0, openTasksByProject[project.id] || 0)
-    )
+      renderProjectCard(
+        project,
+        hoursByProject[project.id] || 0,
+        openTasksByProject[project.id] || 0,
+        workflows === undefined ? undefined : computeProjectImpactSummary(project.id, workflows)
+      )
+    ),
   ];
 
   grid.replaceChildren(...cards);
@@ -148,6 +259,300 @@ async function renderDashboard() {
     month: "long",
     day: "numeric",
   });
+
+  const portfolioAgg = workflows ? aggregatePortfolioImpact(workflows) : null;
+  const attentionItems = computeAttentionItems(projects, payments, workflows);
+
+  renderExecutiveKpiRow(projects, openTasksByProject, payments, portfolioAgg, attentionItems);
+  renderAttentionRequired(attentionItems);
+  renderDashboardCharts(projects, workflows, impactData ? impactData.measurementsByWorkflowId : undefined, portfolioAgg);
+  renderOperatingPulse(projects, hoursByProject, payments, recentTimeEntries, workflows);
+}
+
+// --- Attention Required ---
+// Sourced from what actually has a data model in this repo today: overdue
+// milestones, overdue/unpaid payments, and impact baseline/staleness. There's
+// no Technical Health data model in this repo yet, so "critical" and
+// "needs_attention" tiers are always empty here — this is the seam where
+// technical findings would plug in once that exists.
+function computeAttentionItems(projects, payments, workflows) {
+  const items = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const project of projects) {
+    if (project.next_milestone_date && project.status !== "done" && project.status !== "completed") {
+      const dueDate = new Date(`${project.next_milestone_date}T00:00:00`);
+      if (dueDate < today) {
+        items.push({
+          tier: "overdue",
+          text: `${project.name}: "${project.next_milestone}" was due ${dueDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+          projectId: project.id,
+        });
+      }
+    }
+  }
+
+  for (const payment of payments) {
+    if (payment.due_date && !payment.paid_date) {
+      const dueDate = new Date(`${payment.due_date}T00:00:00`);
+      if (dueDate < today) {
+        const project = projects.find((p) => p.id === payment.project_id);
+        items.push({
+          tier: "overdue",
+          text: `Payment overdue${project ? ` — ${project.name}` : ""}: $${Number(payment.amount).toLocaleString()} was due ${dueDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+          href: "pages/finance.html",
+          projectId: payment.project_id,
+        });
+      }
+    }
+  }
+
+  if (workflows) {
+    for (const workflow of workflows) {
+      const impact = computeWorkflowImpact(workflow);
+      const project = projects.find((p) => p.id === workflow.project_id);
+      const projectName = project ? project.name : "Unknown project";
+      if (!impact.hasBaseline || !impact.hasCurrent) {
+        items.push({
+          tier: "data_needed",
+          text: `${projectName}: "${workflow.workflow_name}" needs a baseline measurement`,
+          href: "pages/impact.html",
+          projectId: workflow.project_id,
+        });
+      } else {
+        const freshness = impactFreshnessStatus(workflow.last_measured_at);
+        if (freshness === "stale") {
+          items.push({
+            tier: "data_needed",
+            text: `${projectName}: "${workflow.workflow_name}" hasn't been re-measured in over 120 days`,
+            href: "pages/impact.html",
+            projectId: workflow.project_id,
+          });
+        }
+      }
+    }
+  }
+
+  const tierOrder = { critical: 0, needs_attention: 1, overdue: 2, data_needed: 3 };
+  items.sort((a, b) => tierOrder[a.tier] - tierOrder[b.tier]);
+  return items;
+}
+
+const ATTENTION_TIER_LABELS = {
+  critical: "Critical",
+  needs_attention: "Needs Attention",
+  overdue: "Overdue",
+  data_needed: "Data Needed",
+};
+
+function renderAttentionRequired(items) {
+  const container = document.getElementById("attention-required-list");
+  if (items.length === 0) {
+    container.innerHTML = `<p class="attention-empty">Nothing needs attention right now.</p>`;
+    return;
+  }
+  container.innerHTML = items
+    .map(
+      (item) => `
+    <div class="attention-item attention-item-${item.tier}">
+      <span class="attention-tier-badge attention-tier-${item.tier}">${ATTENTION_TIER_LABELS[item.tier]}</span>
+      <span class="attention-text">${escapeHtml(item.text)}</span>
+      ${item.href ? `<a class="attention-link" href="${item.href}">View →</a>` : ""}
+    </div>
+  `
+    )
+    .join("");
+}
+
+// --- Executive KPI row ---
+
+function renderExecutiveKpiRow(projects, openTasksByProject, payments, portfolioAgg, attentionItems) {
+  const activeProjects = projects.filter((p) => p.status === "active" || p.status === "in_progress").length;
+  const projectsNeedingAttention = new Set(attentionItems.map((i) => i.projectId).filter(Boolean)).size;
+  const openTasks = Object.values(openTasksByProject).reduce((sum, n) => sum + n, 0);
+
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const revenueThisMonth = payments
+    .filter((p) => p.paid_date && p.paid_date.slice(0, 7) === monthKey)
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+
+  const tiles = [
+    { label: "Active Projects", value: activeProjects, href: "#portfolio-section" },
+    { label: "Projects Needing Attention", value: projectsNeedingAttention, href: "#attention-section", warn: projectsNeedingAttention > 0 },
+    { label: "Critical Technical Issues", value: "—", note: "Health not tracked yet in this repo" },
+    { label: "Open Tasks", value: openTasks, href: "pages/tasks.html" },
+    { label: "Revenue This Month", value: `$${Math.round(revenueThisMonth).toLocaleString()}`, href: "pages/finance.html" },
+    {
+      label: "Client Hours Saved / Year",
+      value: portfolioAgg ? formatImpactHours(portfolioAgg.totalIdentifiedHours) : "Sign in to view",
+      href: "pages/impact.html",
+    },
+    {
+      label: "Workdays Recovered / Year",
+      value: portfolioAgg ? `${Math.round(portfolioAgg.workdaysRecovered).toLocaleString()} days` : "Sign in to view",
+      href: "pages/impact.html",
+    },
+  ];
+
+  document.getElementById("executive-kpi-row").innerHTML = tiles
+    .map((t) => {
+      const inner = `
+        <span class="kpi-tile-value">${t.value}</span>
+        <span class="kpi-tile-label">${t.label}</span>
+        ${t.note ? `<span class="kpi-tile-note">${t.note}</span>` : ""}
+      `;
+      const cls = `kpi-tile ${t.warn ? "kpi-tile-warn" : ""} ${t.href ? "kpi-tile-link" : ""}`;
+      return t.href ? `<a class="${cls}" href="${t.href}">${inner}</a>` : `<div class="${cls}">${inner}</div>`;
+    })
+    .join("");
+}
+
+// --- Client Impact Summary charts (compact versions of the Impact page's) ---
+
+function renderDashboardCharts(projects, workflows, measurementsByWorkflowId, portfolioAgg) {
+  const hoursEl = document.getElementById("dash-hours-chart");
+  const trendEl = document.getElementById("dash-trend-chart");
+  const healthEl = document.getElementById("dash-health-chart");
+
+  if (!workflows) {
+    renderSignInPrompt(hoursEl, "Sign in to see hours saved by project.");
+    renderSignInPrompt(trendEl, "Sign in to see the impact trend.");
+  } else {
+    const byProject = {};
+    for (const workflow of workflows) {
+      const impact = computeWorkflowImpact(workflow);
+      if (impact.annualHoursSaved == null) continue;
+      byProject[workflow.project_id] = (byProject[workflow.project_id] || 0) + impact.annualHoursSaved;
+    }
+    const rows = Object.entries(byProject)
+      .map(([projectId, hours]) => ({ label: (projects.find((p) => p.id === projectId) || {}).name || "Unknown", hours }))
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 5);
+    renderHoursBarChart(hoursEl, rows);
+    renderTrendLineChart(trendEl, buildImpactTrend(workflows, measurementsByWorkflowId));
+  }
+
+  renderHealthDistributionChart(healthEl, computeHealthDistribution(projects, workflows));
+}
+
+// Buckets projects using what data actually exists in this repo: an overdue
+// milestone or stale/missing impact data means "Needs Attention"; no signal
+// at all means "Unknown"; anything else is "Healthy". "Critical" always
+// stays 0 until there's a real Technical Health data source.
+function computeHealthDistribution(projects, workflows) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const buckets = { healthy: 0, needsAttention: 0, critical: 0, unknown: 0 };
+
+  for (const project of projects) {
+    const hasMilestoneSignal = !!project.next_milestone_date;
+    const projectWorkflows = workflows ? workflows.filter((w) => w.project_id === project.id) : [];
+    const hasImpactSignal = projectWorkflows.length > 0;
+
+    const milestoneOverdue = hasMilestoneSignal && new Date(`${project.next_milestone_date}T00:00:00`) < today;
+    const impactIssue = projectWorkflows.some((w) => {
+      const impact = computeWorkflowImpact(w);
+      if (!impact.hasBaseline || !impact.hasCurrent) return true;
+      return impactFreshnessStatus(w.last_measured_at) === "stale";
+    });
+
+    if (milestoneOverdue || impactIssue) {
+      buckets.needsAttention++;
+    } else if (hasMilestoneSignal || hasImpactSignal) {
+      buckets.healthy++;
+    } else {
+      buckets.unknown++;
+    }
+  }
+  return buckets;
+}
+
+// --- Operating Pulse ---
+
+function renderOperatingPulse(projects, hoursByProject, payments, recentTimeEntries, workflows) {
+  renderPulseMilestones(projects);
+  renderPulseWorkload(projects, hoursByProject);
+  renderPulseActivity(projects, recentTimeEntries);
+  renderPulseFinancial(payments);
+  renderPulseMeasurementsDue(projects, workflows);
+}
+
+function renderPulseMilestones(projects) {
+  const el = document.getElementById("pulse-milestones");
+  const upcoming = projects
+    .filter((p) => p.next_milestone_date && p.status !== "done" && p.status !== "completed")
+    .sort((a, b) => new Date(a.next_milestone_date) - new Date(b.next_milestone_date))
+    .slice(0, 5);
+  if (upcoming.length === 0) {
+    el.innerHTML = `<p class="lead-detail-contact">No upcoming milestones set.</p>`;
+    return;
+  }
+  el.innerHTML = upcoming
+    .map((p) => `<div class="pulse-row"><span>${escapeHtml(p.name)} — ${escapeHtml(p.next_milestone || "")}</span><span class="lead-detail-contact">${new Date(`${p.next_milestone_date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span></div>`)
+    .join("");
+}
+
+function renderPulseWorkload(projects, hoursByProject) {
+  const el = document.getElementById("pulse-workload");
+  const rows = Object.entries(hoursByProject)
+    .map(([projectId, hours]) => ({ name: (projects.find((p) => p.id === projectId) || {}).name || "Unknown", hours }))
+    .sort((a, b) => b.hours - a.hours);
+  if (rows.length === 0) {
+    el.innerHTML = `<p class="lead-detail-contact">No hours logged this week yet.</p>`;
+    return;
+  }
+  el.innerHTML = rows.map((r) => `<div class="pulse-row"><span>${escapeHtml(r.name)}</span><span>${r.hours}h</span></div>`).join("");
+}
+
+function renderPulseActivity(projects, recentTimeEntries) {
+  const el = document.getElementById("pulse-activity");
+  if (recentTimeEntries.length === 0) {
+    el.innerHTML = `<p class="lead-detail-contact">No recent activity.</p>`;
+    return;
+  }
+  el.innerHTML = recentTimeEntries
+    .map((entry) => {
+      const project = projects.find((p) => p.id === entry.project_id);
+      return `<div class="pulse-row"><span>${escapeHtml(project ? project.name : "Unknown")} — ${entry.hours}h${entry.note ? `: ${escapeHtml(entry.note)}` : ""}</span><span class="lead-detail-contact">${new Date(entry.entry_date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span></div>`;
+    })
+    .join("");
+}
+
+function renderPulseFinancial(payments) {
+  const el = document.getElementById("pulse-financial");
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const received = payments.filter((p) => p.paid_date && p.paid_date.slice(0, 7) === monthKey).reduce((s, p) => s + Number(p.amount), 0);
+  const expected = payments.filter((p) => !p.paid_date).reduce((s, p) => s + Number(p.amount), 0);
+  el.innerHTML = `
+    <div class="pulse-row"><span>Received this month</span><span>$${Math.round(received).toLocaleString()}</span></div>
+    <div class="pulse-row"><span>Expected (unpaid)</span><span>$${Math.round(expected).toLocaleString()}</span></div>
+  `;
+}
+
+function renderPulseMeasurementsDue(projects, workflows) {
+  const el = document.getElementById("pulse-measurements-due");
+  if (workflows === undefined) {
+    renderSignInPrompt(el, "Sign in to see measurements due for review.");
+    return;
+  }
+  const due = workflows.filter((w) => {
+    const status = impactFreshnessStatus(w.last_measured_at);
+    return status === "stale" || status === "review_soon" || status === "baseline_needed";
+  });
+  if (due.length === 0) {
+    el.innerHTML = `<p class="lead-detail-contact">All impact measurements are current.</p>`;
+    return;
+  }
+  el.innerHTML = due
+    .slice(0, 6)
+    .map((w) => {
+      const project = projects.find((p) => p.id === w.project_id);
+      return `<div class="pulse-row"><span>${escapeHtml(project ? project.name : "Unknown")} — ${escapeHtml(w.workflow_name)}</span>${freshnessBadgeSmall(impactFreshnessStatus(w.last_measured_at))}</div>`;
+    })
+    .join("");
 }
 
 // --- Project form dialog: create/edit project details ---

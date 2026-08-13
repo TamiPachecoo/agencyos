@@ -22,14 +22,81 @@
         <a href="pages/time.html">Time</a>
         <a href="pages/tasks.html">Tasks</a>
         <a href="pages/finance.html">Finance</a>
+        <a href="pages/impact.html">Impact</a>
       </nav>
     </div>
-    <span class="app-header-date" id="today"></span>
+    <div class="app-header-right">
+      <span class="auth-status" id="auth-status"></span>
+      <span class="app-header-date" id="today"></span>
+    </div>
   </header>
 
   <main class="app-main">
-    <section class="project-grid" id="project-grid">
-      <!-- Project cards render here via js/dashboard.js -->
+    <section class="kpi-row" id="executive-kpi-row" aria-label="Agency snapshot"></section>
+
+    <section class="dashboard-section" id="attention-section">
+      <div class="dashboard-section-head">
+        <h2>Attention Required</h2>
+      </div>
+      <div id="attention-required-list"></div>
+    </section>
+
+    <section class="dashboard-section" id="portfolio-section">
+      <div class="dashboard-section-head">
+        <h2>Portfolio Overview</h2>
+      </div>
+      <section class="project-grid" id="project-grid">
+        <!-- Project cards render here via js/dashboard.js -->
+      </section>
+    </section>
+
+    <section class="dashboard-section" id="impact-summary-section">
+      <div class="dashboard-section-head">
+        <h2>Client Impact Summary</h2>
+        <a href="pages/impact.html" class="dashboard-section-link">Full Impact page →</a>
+      </div>
+      <div class="dashboard-charts-grid">
+        <div class="dashboard-chart-card">
+          <h3>Hours saved by project</h3>
+          <div id="dash-hours-chart"></div>
+        </div>
+        <div class="dashboard-chart-card">
+          <h3>Impact trend</h3>
+          <div id="dash-trend-chart"></div>
+        </div>
+        <div class="dashboard-chart-card">
+          <h3>Project health distribution</h3>
+          <div id="dash-health-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dashboard-section" id="operating-pulse-section">
+      <div class="dashboard-section-head">
+        <h2>Operating Pulse</h2>
+      </div>
+      <div class="pulse-grid">
+        <div class="pulse-card">
+          <h3>Upcoming milestones</h3>
+          <div id="pulse-milestones"></div>
+        </div>
+        <div class="pulse-card">
+          <h3>Workload this week</h3>
+          <div id="pulse-workload"></div>
+        </div>
+        <div class="pulse-card">
+          <h3>Recent activity</h3>
+          <div id="pulse-activity"></div>
+        </div>
+        <div class="pulse-card">
+          <h3>Financial pulse</h3>
+          <div id="pulse-financial"></div>
+        </div>
+        <div class="pulse-card">
+          <h3>Impact measurements due</h3>
+          <div id="pulse-measurements-due"></div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -43,6 +110,9 @@
 
   <script src="shared/vendor/supabase.js"></script>
   <script src="js/supabaseClient.js"></script>
+  <script src="js/authState.js"></script>
+  <script src="js/impactCalc.js"></script>
+  <script src="js/impactCharts.js"></script>
   <script src="js/dashboard.js"></script>
   <script>
     if ("serviceWorker" in navigator) {

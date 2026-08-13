@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Sign in</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="../shared/icons/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Agency OS" />
+</head>
+<body>
+  <main class="signin-main">
+    <div class="card signin-card">
+      <h1 class="signin-title">Agency OS</h1>
+      <p class="lead-detail-contact">
+        Sign in to manage Client Impact data. Everything else in Agency OS stays open, as before.
+      </p>
+      <form id="signin-form" class="dialog-form">
+        <label>Email
+          <input type="email" name="email" required autocomplete="username" />
+        </label>
+        <label>Password
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="signin-error" class="signin-error" hidden></p>
+        <button type="submit" class="btn btn-primary" id="signin-submit">Sign in</button>
+      </form>
+      <p class="lead-detail-contact signin-footnote">
+        No account yet? Create one from Supabase Studio → Authentication → Users — this app has no public
+        sign-up, so impact data stays limited to whoever you invite there.
+      </p>
+      <a class="auth-link" href="../index.html">← Back to Dashboard</a>
+    </div>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script>
+    function nextPath() {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next");
+      // next is already an absolute path (e.g. "/index.html", "/pages/impact.html") —
+      // captured via window.location.pathname in js/authState.js — so it can be used
+      // as-is. Guard against "//host/..." which browsers treat as protocol-relative
+      // (i.e. a redirect to a different host) rather than a same-site absolute path.
+      if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+      return "/index.html";
+    }
+
+    supabaseClient.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.replace(nextPath());
+    });
+
+    document.getElementById("signin-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorEl = document.getElementById("signin-error");
+      const submitBtn = document.getElementById("signin-submit");
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in…";
+
+      const formData = new FormData(event.target);
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: formData.get("email").trim(),
+        password: formData.get("password"),
+      });
+
+      if (error) {
+        errorEl.textContent = error.message;
+        errorEl.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign in";
+        return;
+      }
+
+      window.location.replace(nextPath());
+    });
+  </script>
+</body>
+</html>
