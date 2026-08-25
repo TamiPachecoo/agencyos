@@ -226,21 +226,52 @@ class HealthMonitor {
 
   startAutoCheck() {
     // Initial check
-    this.checkAllProjects();
+    this.checkAllProjects().then(() => {
+      this.updateProjectCards();
+    });
 
     // Set up periodic checks
     setInterval(() => {
-      this.checkAllProjects();
-
-      // Update the panel if it exists
-      const panel = document.getElementById("health-monitor-panel");
-      if (panel) {
-        const newPanel = this.renderHealthPanel();
-        panel.replaceWith(newPanel);
-      }
+      this.checkAllProjects().then(() => {
+        this.updateProjectCards();
+      });
     }, this.checkInterval);
+  }
+
+  updateProjectCards() {
+    // Update health status on all visible project cards
+    Object.keys(this.config).forEach((key) => {
+      const config = this.config[key];
+      const projectName = config.name;
+      const status = this.status[key];
+
+      if (!status) return;
+
+      // Find and update the card header's health badge
+      const cards = document.querySelectorAll(".project-card");
+      cards.forEach((card) => {
+        const projectTitle = card.querySelector("h2")?.textContent;
+        if (projectTitle === projectName) {
+          const badge = card.querySelector(".card-health-badge");
+          if (badge) {
+            const deployIcon = this.getStatusIcon(status.deployment);
+            const supabaseIcon = this.getStatusIcon(status.supabase);
+            const deployColor = this.getStatusColor(status.deployment);
+            const supabaseColor = this.getStatusColor(status.supabase);
+
+            badge.innerHTML = `
+              <span class="health-dot" style="color: ${deployColor};" title="Deployment: ${status.deployment}">●</span>
+              <span class="health-dot" style="color: ${supabaseColor};" title="Database: ${status.supabase}">●</span>
+            `;
+          }
+        }
+      });
+    });
   }
 }
 
 // Create a singleton instance
 const healthMonitor = new HealthMonitor();
+
+// Export config for dashboard
+healthMonitor.config = HEALTH_CONFIG;

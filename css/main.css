@@ -739,6 +739,27 @@ dialog h3 {
   background: var(--color-danger-subtle);
 }
 
+/* Project Card Health Status */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.card-health-badge {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.health-dot {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity var(--transition-base);
+}
+
 /* Technical Health Monitor */
 .health-panel {
   background: var(--color-surface);

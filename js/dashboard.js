@@ -66,13 +66,32 @@ function formatMilestone(project) {
   return `${project.next_milestone} — ${formatted}`;
 }
 
-function renderProjectCard(project, hoursThisWeek, openTasks) {
+function renderProjectCard(project, hoursThisWeek, openTasks, healthStatus) {
   const badgeClass = project.status === "active" ? "badge-active" : "badge-progress";
   const card = document.createElement("button");
   card.type = "button";
   card.className = "card project-card";
+
+  let healthHtml = "";
+  if (healthStatus) {
+    const deployIcon = healthMonitor.getStatusIcon(healthStatus.deployment);
+    const supabaseIcon = healthMonitor.getStatusIcon(healthStatus.supabase);
+    const deployColor = healthMonitor.getStatusColor(healthStatus.deployment);
+    const supabaseColor = healthMonitor.getStatusColor(healthStatus.supabase);
+
+    healthHtml = `
+      <div class="card-health-badge" title="System Health">
+        <span class="health-dot" style="color: ${deployColor};" title="Deployment: ${healthStatus.deployment}">●</span>
+        <span class="health-dot" style="color: ${supabaseColor};" title="Database: ${healthStatus.supabase}">●</span>
+      </div>
+    `;
+  }
+
   card.innerHTML = `
-    <span class="badge ${badgeClass}">${escapeHtml(project.status.replace("_", " "))}</span>
+    <div class="card-header">
+      <span class="badge ${badgeClass}">${escapeHtml(project.status.replace("_", " "))}</span>
+      ${healthHtml}
+    </div>
     <h2>${escapeHtml(project.name)}</h2>
     <div class="card-meta">
       <div class="card-meta-row"><span>Next</span><span>${escapeHtml(formatMilestone(project))}</span></div>
@@ -118,7 +137,6 @@ function renderNewProjectCard() {
 }
 
 async function renderDashboard() {
-  const main = document.querySelector(".app-main");
   const grid = document.getElementById("project-grid");
   const [projects, hoursByProject, openTasksByProject] = await Promise.all([
     fetchProjects(),
@@ -126,18 +144,25 @@ async function renderDashboard() {
     fetchOpenTaskCounts(),
   ]);
 
-  // Render health monitor panel if it doesn't exist
-  let healthPanel = document.getElementById("health-monitor-panel");
-  if (!healthPanel) {
-    healthPanel = healthMonitor.renderHealthPanel();
-    main.insertBefore(healthPanel, grid);
-  }
+  // Get health status for all projects
+  const projectHealthMap = {};
+  Object.keys(healthMonitor.config).forEach((key) => {
+    const config = healthMonitor.config[key];
+    const projectName = config.name;
+    projectHealthMap[projectName] = healthMonitor.status[key] || null;
+  });
 
   const cards = [
     renderNewProjectCard(),
-    ...projects.map((project) =>
-      renderProjectCard(project, hoursByProject[project.id] || 0, openTasksByProject[project.id] || 0)
-    )
+    ...projects.map((project) => {
+      const healthStatus = projectHealthMap[project.name];
+      return renderProjectCard(
+        project,
+        hoursByProject[project.id] || 0,
+        openTasksByProject[project.id] || 0,
+        healthStatus
+      );
+    })
   ];
 
   grid.replaceChildren(...cards);
