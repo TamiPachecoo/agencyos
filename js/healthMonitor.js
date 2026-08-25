@@ -18,14 +18,15 @@ const HEALTH_CONFIG = {
   },
   amarelinha: {
     name: "Amarelinha",
-    deploymentUrl: "https://tamipachecoo.github.io/amarelinha/",
-    // Add supabaseUrl and supabaseKey when available
+    deploymentUrl: "https://amarelinha-npisjsq6a-tami4.vercel.app/",
+    supabaseUrl: "https://lwxssimdlibjdhtazfao.supabase.co",
+    supabaseKey: "sb_publishable_GZfqIscF8eR6pVjNXI0DSA_RIK9LKXU",
   },
   vicaf: {
     name: "VICAF",
     deploymentUrl: "https://tamipachecoo.github.io/vicafponto/",
     supabaseUrl: "https://xuonzwvqqwbgcedidyie.supabase.co",
-    // Add supabaseKey when available
+    supabaseKey: "sb_publishable_90r8S_3VdagojDIoPHe5Gg_Ief-vsnu",
   },
 };
 
