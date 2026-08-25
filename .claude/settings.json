@@ -1,0 +1,28 @@
+{
+  "vercel_deployment_check": {
+    "enabled": true,
+    "vercel_url": "https://agencyos-rbt6y4lyn-tami4.vercel.app/",
+    "check_after_push": true,
+    "screenshot_on_verify": true,
+    "timeout_minutes": 10
+  },
+  "deployment_verification": {
+    "description": "Always verify Vercel deployment is live before claiming code is live",
+    "required_elements": {
+      "dark_theme": {
+        "selector": "body",
+        "expected_background": "#0f1419",
+        "description": "Dark navy background should be visible"
+      },
+      "health_dots": {
+        "selector": ".card-health-badge",
+        "expected_count_min": 2,
+        "description": "Health status dots should appear on project cards"
+      },
+      "language_bars": {
+        "selector": ".language-bar",
+        "description": "Language breakdown bars should appear on cards with GitHub repos"
+      }
+    }
+  }
+}
