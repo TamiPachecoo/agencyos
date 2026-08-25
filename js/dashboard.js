@@ -118,12 +118,20 @@ function renderNewProjectCard() {
 }
 
 async function renderDashboard() {
+  const main = document.querySelector(".app-main");
   const grid = document.getElementById("project-grid");
   const [projects, hoursByProject, openTasksByProject] = await Promise.all([
     fetchProjects(),
     fetchHoursThisWeek(),
     fetchOpenTaskCounts(),
   ]);
+
+  // Render health monitor panel if it doesn't exist
+  let healthPanel = document.getElementById("health-monitor-panel");
+  if (!healthPanel) {
+    healthPanel = healthMonitor.renderHealthPanel();
+    main.insertBefore(healthPanel, grid);
+  }
 
   const cards = [
     renderNewProjectCard(),
@@ -669,6 +677,9 @@ async function initializeQuestionnairesBucket() {
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
   initializeQuestionnairesBucket();
 }
+
+// Initialize health monitor
+healthMonitor.startAutoCheck();
 
 renderDashboard().catch((error) => {
   console.error("Failed to load dashboard:", error);

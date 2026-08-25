@@ -738,3 +738,124 @@ dialog h3 {
 .btn-danger:hover {
   background: var(--color-danger-subtle);
 }
+
+/* Technical Health Monitor */
+.health-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.health-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.health-header h3 {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.health-header h3::before {
+  content: "⚡";
+  opacity: 0.7;
+}
+
+.health-refresh-btn {
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.health-refresh-btn:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: rotate(180deg);
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.health-card {
+  padding: var(--space-4);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.health-card:hover {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.health-card.health-healthy {
+  border-left: 3px solid var(--color-success);
+}
+
+.health-card.health-error {
+  border-left: 3px solid var(--color-danger);
+}
+
+.health-card.health-needs_attention {
+  border-left: 3px solid var(--color-warning);
+}
+
+.health-card.health-unknown {
+  border-left: 3px solid var(--color-text-faint);
+}
+
+.health-card-name {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-3);
+  color: var(--color-text);
+}
+
+.health-card-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.health-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-xs);
+}
+
+.health-label {
+  color: var(--color-text-muted);
+}
+
+.health-indicator {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+}
+
+.health-card-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+  text-align: right;
+}

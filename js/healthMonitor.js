@@ -1,0 +1,232 @@
+// Technical Health Monitoring for Agency OS ecosystem
+// Monitors: Agency OS, PERSEA, Amarelinha, VICAF
+
+const HEALTH_CONFIG = {
+  agencyOS: {
+    name: "Agency OS",
+    deploymentUrl: "https://agencyos-94rrdfan6-tami4.vercel.app/",
+    supabaseUrl: "https://kndpvdixtlirwgsqvgjh.supabase.co",
+    supabaseKey: "sb_publishable_IQylTt1QHL3TPk5FJe5UPw_sEGHWMMs",
+  },
+  persea: {
+    name: "PERSEA",
+    deploymentUrl: "https://metodopersea.vercel.app/",
+    supabaseUrl: "https://kndpvdixtlirwgsqvgjh.supabase.co", // Shared with Agency OS
+    supabaseKey: "sb_publishable_IQylTt1QHL3TPk5FJe5UPw_sEGHWMMs",
+  },
+  amarelinha: {
+    name: "Amarelinha",
+    deploymentUrl: "https://tamipachecoo.github.io/amarelinha/",
+    // Amarelinha has its own Supabase project (from GitHub references)
+    supabaseUrl: "https://hxdxrfzjijuakoyxdqkq.supabase.co",
+    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZHhyZnpqaWp1YWtveXhkcWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTY1Nzk5MTYsImV4cCI6MjAxMjE1NTkxNn0.QIYO1fKP_1AwfB4r14mwdGvvPu3Ybv_Kzqv0V2oLVmA",
+  },
+  vicaf: {
+    name: "VICAF",
+    deploymentUrl: "https://tamipachecoo.github.io/vicafponto/",
+    supabaseUrl: "https://xuonzwvqqwbgcedidyie.supabase.co",
+    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1b256d3ZxcXdiZ2NlZGlkeWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI0MzQ4NDAsImV4cCI6MjAxNzYxMDg0MH0.nOtv9x4VZZjWwb5Uh3w8kKdM7vM9qZ2pK4L6nM8oQ9k",
+  },
+};
+
+class HealthMonitor {
+  constructor() {
+    this.status = {};
+    this.lastCheck = {};
+    this.checkInterval = 60000; // Check every 60 seconds
+  }
+
+  async checkHealth(project) {
+    const config = HEALTH_CONFIG[project];
+    if (!config) return null;
+
+    const status = {
+      name: config.name,
+      deployment: "unknown",
+      supabase: "unknown",
+      lastCheck: new Date(),
+    };
+
+    // Check deployment URL
+    try {
+      const deployResponse = await fetch(config.deploymentUrl, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-store",
+      });
+      status.deployment = "healthy";
+    } catch (error) {
+      console.warn(`Deployment check failed for ${config.name}:`, error.message);
+      status.deployment = "error";
+    }
+
+    // Check Supabase connectivity
+    try {
+      const supabaseClient = window.supabase.createClient(
+        config.supabaseUrl,
+        config.supabaseKey
+      );
+      const { data, error } = await supabaseClient
+        .from("projects")
+        .select("id")
+        .limit(1);
+
+      if (error && error.message.includes("401")) {
+        status.supabase = "auth_error";
+      } else if (error) {
+        status.supabase = "connection_error";
+      } else {
+        status.supabase = "healthy";
+      }
+    } catch (error) {
+      console.warn(`Supabase check failed for ${config.name}:`, error.message);
+      status.supabase = "error";
+    }
+
+    // Determine overall status
+    if (status.deployment === "error" || status.supabase === "error") {
+      status.overall = "error";
+    } else if (status.deployment === "healthy" && status.supabase === "healthy") {
+      status.overall = "healthy";
+    } else {
+      status.overall = "needs_attention";
+    }
+
+    this.status[project] = status;
+    this.lastCheck[project] = new Date();
+    return status;
+  }
+
+  async checkAllProjects() {
+    const projects = Object.keys(HEALTH_CONFIG);
+    await Promise.all(projects.map((p) => this.checkHealth(p)));
+    return this.status;
+  }
+
+  getStatusColor(status) {
+    switch (status) {
+      case "healthy":
+        return "var(--color-success)";
+      case "error":
+        return "var(--color-danger)";
+      case "needs_attention":
+        return "var(--color-warning)";
+      default:
+        return "var(--color-text-muted)";
+    }
+  }
+
+  getStatusIcon(status) {
+    switch (status) {
+      case "healthy":
+        return "✓";
+      case "error":
+        return "✕";
+      case "needs_attention":
+        return "⚠";
+      default:
+        return "—";
+    }
+  }
+
+  renderHealthPanel() {
+    const panel = document.createElement("div");
+    panel.id = "health-monitor-panel";
+    panel.className = "health-panel";
+
+    const header = document.createElement("div");
+    header.className = "health-header";
+    header.innerHTML = `
+      <h3>System Health</h3>
+      <button id="health-refresh-btn" class="health-refresh-btn" title="Refresh status">↻</button>
+    `;
+
+    const statusGrid = document.createElement("div");
+    statusGrid.className = "health-grid";
+
+    const projects = Object.keys(HEALTH_CONFIG);
+    projects.forEach((key) => {
+      const projectStatus = this.status[key];
+      if (!projectStatus) return;
+
+      const card = document.createElement("div");
+      card.className = `health-card health-${projectStatus.overall}`;
+
+      const deployColor = this.getStatusColor(projectStatus.deployment);
+      const supabaseColor = this.getStatusColor(projectStatus.supabase);
+      const deployIcon = this.getStatusIcon(projectStatus.deployment);
+      const supabaseIcon = this.getStatusIcon(projectStatus.supabase);
+
+      card.innerHTML = `
+        <div class="health-card-name">${escapeHtml(projectStatus.name)}</div>
+        <div class="health-card-statuses">
+          <div class="health-status-row">
+            <span class="health-label">Deploy</span>
+            <span class="health-indicator" style="color: ${deployColor};" title="${projectStatus.deployment}">
+              ${deployIcon}
+            </span>
+          </div>
+          <div class="health-status-row">
+            <span class="health-label">DB</span>
+            <span class="health-indicator" style="color: ${supabaseColor};" title="${projectStatus.supabase}">
+              ${supabaseIcon}
+            </span>
+          </div>
+        </div>
+        <div class="health-card-time">
+          ${this.formatLastCheck(projectStatus.lastCheck)}
+        </div>
+      `;
+
+      statusGrid.appendChild(card);
+    });
+
+    panel.appendChild(header);
+    panel.appendChild(statusGrid);
+
+    // Add refresh listener
+    const refreshBtn = panel.querySelector("#health-refresh-btn");
+    refreshBtn.addEventListener("click", () => {
+      this.checkAllProjects().then(() => {
+        // Re-render the panel
+        const existingPanel = document.getElementById("health-monitor-panel");
+        if (existingPanel) {
+          const newPanel = this.renderHealthPanel();
+          existingPanel.replaceWith(newPanel);
+        }
+      });
+    });
+
+    return panel;
+  }
+
+  formatLastCheck(date) {
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000); // seconds
+
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return date.toLocaleDateString();
+  }
+
+  startAutoCheck() {
+    // Initial check
+    this.checkAllProjects();
+
+    // Set up periodic checks
+    setInterval(() => {
+      this.checkAllProjects();
+
+      // Update the panel if it exists
+      const panel = document.getElementById("health-monitor-panel");
+      if (panel) {
+        const newPanel = this.renderHealthPanel();
+        panel.replaceWith(newPanel);
+      }
+    }, this.checkInterval);
+  }
+}
+
+// Create a singleton instance
+const healthMonitor = new HealthMonitor();
