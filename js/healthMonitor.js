@@ -1,6 +1,8 @@
 // Technical Health Monitoring for Agency OS ecosystem
 // Monitors: Agency OS, PERSEA, Amarelinha, VICAF
 
+// Technical Health Monitoring Configuration
+// Add Supabase keys here or leave them out to skip Supabase checks for that project
 const HEALTH_CONFIG = {
   agencyOS: {
     name: "Agency OS",
@@ -17,15 +19,13 @@ const HEALTH_CONFIG = {
   amarelinha: {
     name: "Amarelinha",
     deploymentUrl: "https://tamipachecoo.github.io/amarelinha/",
-    // Amarelinha has its own Supabase project (from GitHub references)
-    supabaseUrl: "https://hxdxrfzjijuakoyxdqkq.supabase.co",
-    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4ZHhyZnpqaWp1YWtveXhkcWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTY1Nzk5MTYsImV4cCI6MjAxMjE1NTkxNn0.QIYO1fKP_1AwfB4r14mwdGvvPu3Ybv_Kzqv0V2oLVmA",
+    // Add supabaseUrl and supabaseKey when available
   },
   vicaf: {
     name: "VICAF",
     deploymentUrl: "https://tamipachecoo.github.io/vicafponto/",
     supabaseUrl: "https://xuonzwvqqwbgcedidyie.supabase.co",
-    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1b256d3ZxcXdiZ2NlZGlkeWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI0MzQ4NDAsImV4cCI6MjAxNzYxMDg0MH0.nOtv9x4VZZjWwb5Uh3w8kKdM7vM9qZ2pK4L6nM8oQ9k",
+    // Add supabaseKey when available
   },
 };
 
@@ -60,33 +60,39 @@ class HealthMonitor {
       status.deployment = "error";
     }
 
-    // Check Supabase connectivity
-    try {
-      const supabaseClient = window.supabase.createClient(
-        config.supabaseUrl,
-        config.supabaseKey
-      );
-      const { data, error } = await supabaseClient
-        .from("projects")
-        .select("id")
-        .limit(1);
+    // Check Supabase connectivity (skip if key is not configured)
+    if (config.supabaseUrl && config.supabaseKey) {
+      try {
+        const supabaseClient = window.supabase.createClient(
+          config.supabaseUrl,
+          config.supabaseKey
+        );
+        const { data, error } = await supabaseClient
+          .from("projects")
+          .select("id")
+          .limit(1);
 
-      if (error && error.message.includes("401")) {
-        status.supabase = "auth_error";
-      } else if (error) {
-        status.supabase = "connection_error";
-      } else {
-        status.supabase = "healthy";
+        if (error && error.message.includes("401")) {
+          status.supabase = "auth_error";
+        } else if (error) {
+          status.supabase = "connection_error";
+        } else {
+          status.supabase = "healthy";
+        }
+      } catch (error) {
+        console.warn(`Supabase check failed for ${config.name}:`, error.message);
+        status.supabase = "error";
       }
-    } catch (error) {
-      console.warn(`Supabase check failed for ${config.name}:`, error.message);
-      status.supabase = "error";
+    } else {
+      status.supabase = "not_configured";
     }
 
     // Determine overall status
     if (status.deployment === "error" || status.supabase === "error") {
       status.overall = "error";
-    } else if (status.deployment === "healthy" && status.supabase === "healthy") {
+    } else if (status.deployment === "error") {
+      status.overall = "error";
+    } else if (status.deployment === "healthy" && (status.supabase === "healthy" || status.supabase === "not_configured")) {
       status.overall = "healthy";
     } else {
       status.overall = "needs_attention";
@@ -111,6 +117,9 @@ class HealthMonitor {
         return "var(--color-danger)";
       case "needs_attention":
         return "var(--color-warning)";
+      case "not_configured":
+      case "unknown":
+        return "var(--color-text-faint)";
       default:
         return "var(--color-text-muted)";
     }
@@ -124,6 +133,10 @@ class HealthMonitor {
         return "✕";
       case "needs_attention":
         return "⚠";
+      case "not_configured":
+        return "?";
+      case "unknown":
+        return "—";
       default:
         return "—";
     }
