@@ -11,9 +11,9 @@ const HEALTH_CONFIG = {
     supabaseKey: "sb_publishable_IQylTt1QHL3TPk5FJe5UPw_sEGHWMMs",
   },
   persea: {
-    name: "PERSEA",
+    name: "Método Persea",
     deploymentUrl: "https://metodopersea.vercel.app/",
-    supabaseUrl: "https://kndpvdixtlirwgsqvgjh.supabase.co", // Shared with Agency OS
+    supabaseUrl: "https://kndpvdixtlirwgsqvgjh.supabase.co",
     supabaseKey: "sb_publishable_IQylTt1QHL3TPk5FJe5UPw_sEGHWMMs",
   },
   amarelinha: {
@@ -23,10 +23,16 @@ const HEALTH_CONFIG = {
     supabaseKey: "sb_publishable_GZfqIscF8eR6pVjNXI0DSA_RIK9LKXU",
   },
   vicaf: {
-    name: "VICAF",
+    name: "Vicaf Hydro",
     deploymentUrl: "https://tamipachecoo.github.io/vicafponto/",
     supabaseUrl: "https://xuonzwvqqwbgcedidyie.supabase.co",
     supabaseKey: "sb_publishable_90r8S_3VdagojDIoPHe5Gg_Ief-vsnu",
+  },
+  camarimMineiro: {
+    name: "Camarim Mineiro",
+    deploymentUrl: "https://camarimmineiro.com/",
+    supabaseUrl: "https://kndpvdixtlirwgsqvgjh.supabase.co",
+    supabaseKey: "sb_publishable_IQylTt1QHL3TPk5FJe5UPw_sEGHWMMs",
   },
 };
 
