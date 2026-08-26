@@ -647,6 +647,9 @@ async function fetchRepoInfo(owner, repo) {
   ]);
 
   if (!metaRes.ok) {
+    if (metaRes.status === 403 || metaRes.status === 429) {
+      return { rateLimited: true };
+    }
     return { notFound: true };
   }
 
@@ -662,7 +665,7 @@ async function fetchRepoInfo(owner, repo) {
     }
   }
 
-  return { description: meta.description || null, languages, readme, notFound: false };
+  return { description: meta.description || null, languages, readme, notFound: false, rateLimited: false };
 }
 
 const LANGUAGE_COLORS = {
@@ -723,15 +726,20 @@ async function loadRepoInfo(repoUrl) {
   const infoEl = document.getElementById("repo-info");
   const parsed = parseGithubRepo(repoUrl);
   if (!parsed) {
-    infoEl.innerHTML = '<p style="color: var(--color-danger);">That doesn\'t look like a GitHub repo URL.</p>';
+    infoEl.innerHTML = '<p style="color: var(--color-danger);">That doesn\'t look like a GitHub repo URL. Format: https://github.com/owner/repo</p>';
     return;
   }
 
   try {
     const info = await fetchRepoInfo(parsed.owner, parsed.repo);
+    if (info.rateLimited) {
+      infoEl.innerHTML =
+        '<p style="color: var(--color-warning);">⚠️ GitHub API rate limit reached. Info will load in a few minutes. (Unauthenticated limit: 60 requests/hour)</p>';
+      return;
+    }
     if (info.notFound) {
       infoEl.innerHTML =
-        '<p style="color: var(--color-danger);">Repo not found or private (only public repos are supported).</p>';
+        '<p style="color: var(--color-danger);">❌ Repo not found or private. Make sure: 1) URL is correct, 2) Repo is public, 3) GitHub exists at that URL</p>';
       return;
     }
     infoEl.innerHTML = `
@@ -743,7 +751,7 @@ async function loadRepoInfo(repoUrl) {
   } catch (error) {
     console.error("Failed to load repo info:", error);
     infoEl.innerHTML =
-      '<p style="color: var(--color-danger);">Couldn\'t load repo info. Check the console for details.</p>';
+      '<p style="color: var(--color-danger);">Couldn\'t load repo info. Check the console for details. (This is likely GitHub API rate limiting.)</p>';
   }
 }
 
