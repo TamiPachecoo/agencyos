@@ -346,9 +346,41 @@ async function renderProjectDetail(project) {
     questionnairesHtml = `<p style="color: var(--color-danger);">Couldn't load questionnaires.</p>`;
   }
 
+  // Get health status if available
+  const healthStatus = healthMonitor.status[Object.keys(healthMonitor.config).find(k => healthMonitor.config[k].name === project.name)] || null;
+  const deploymentColor = healthStatus ? healthMonitor.getStatusColor(healthStatus.deployment) : "#999";
+  const supabaseColor = healthStatus ? healthMonitor.getStatusColor(healthStatus.supabase) : "#999";
+
+  let healthHtml = "";
+  if (healthStatus) {
+    healthHtml = `
+      <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5);">
+        <h3 style="margin: 0 0 var(--space-3);">System Health</h3>
+        <div style="display: flex; gap: var(--space-4); flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 150px;">
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0 0 var(--space-2);">Deployment</p>
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span style="font-size: 20px; color: ${deploymentColor};">●</span>
+              <span>${escapeHtml(healthStatus.deployment)}</span>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0 0 var(--space-2);">Database</p>
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span style="font-size: 20px; color: ${supabaseColor};">●</span>
+              <span>${escapeHtml(healthStatus.supabase)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   container.innerHTML = `
     <h2>${escapeHtml(project.name)}</h2>
     <p class="lead-detail-contact">${escapeHtml(formatMilestone(project))}</p>
+
+    ${healthHtml}
 
     <form id="repo-link-form" class="dialog-form">
       <label>GitHub repo
