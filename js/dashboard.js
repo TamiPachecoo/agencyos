@@ -346,16 +346,25 @@ async function renderProjectDetail(project) {
     questionnairesHtml = `<p style="color: var(--color-danger);">Couldn't load questionnaires.</p>`;
   }
 
-  // Get health status if available
-  const healthStatus = healthMonitor.status[Object.keys(healthMonitor.config).find(k => healthMonitor.config[k].name === project.name)] || null;
+  // Get health status and Supabase info
+  const configKey = Object.keys(healthMonitor.config).find(k => healthMonitor.config[k].name === project.name);
+  const config = configKey ? healthMonitor.config[configKey] : null;
+  const healthStatus = config ? healthMonitor.status[configKey] : null;
   const deploymentColor = healthStatus ? healthMonitor.getStatusColor(healthStatus.deployment) : "#999";
   const supabaseColor = healthStatus ? healthMonitor.getStatusColor(healthStatus.supabase) : "#999";
 
+  // Extract project ID from Supabase URL (e.g., "https://kndpvdixtlirwgsqvgjh.supabase.co" -> "kndpvdixtlirwgsqvgjh")
+  const supabaseProjectId = config ? config.supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] : null;
+  const supabaseDashboardUrl = supabaseProjectId ? `https://app.supabase.com/project/${supabaseProjectId}/advisors?type=security` : null;
+
   let healthHtml = "";
-  if (healthStatus) {
+  if (healthStatus && config) {
     healthHtml = `
       <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-5);">
-        <h3 style="margin: 0 0 var(--space-3);">System Health</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+          <h3 style="margin: 0;">System Health</h3>
+          ${supabaseDashboardUrl ? `<a href="${supabaseDashboardUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent); text-decoration: none; font-size: var(--font-size-sm); border: 1px solid var(--color-accent); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer;">View Supabase Advisors →</a>` : ''}
+        </div>
         <div style="display: flex; gap: var(--space-4); flex-wrap: wrap;">
           <div style="flex: 1; min-width: 150px;">
             <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0 0 var(--space-2);">Deployment</p>
@@ -372,6 +381,9 @@ async function renderProjectDetail(project) {
             </div>
           </div>
         </div>
+        <p style="font-size: var(--font-size-xs); color: var(--color-text-muted); margin: var(--space-3) 0 0; line-height: 1.5;">
+          <strong>What needs attention:</strong> Click "View Supabase Advisors" to see security issues (RLS, exposed functions) and performance recommendations.
+        </p>
       </div>
     `;
   }
