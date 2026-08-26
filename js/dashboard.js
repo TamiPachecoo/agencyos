@@ -109,16 +109,26 @@ async function loadLanguagesForCard(repoUrl, projectId) {
   if (!container) return;
 
   const parsed = parseGithubRepo(repoUrl);
-  if (!parsed) return;
+  if (!parsed) {
+    console.warn(`Could not parse GitHub URL: ${repoUrl}`);
+    return;
+  }
 
   try {
     const info = await fetchRepoInfo(parsed.owner, parsed.repo);
-    if (info.notFound || Object.keys(info.languages).length === 0) return;
+    if (info.notFound) {
+      console.warn(`GitHub repo not found: ${parsed.owner}/${parsed.repo}`);
+      return;
+    }
+    if (Object.keys(info.languages).length === 0) {
+      console.info(`No language data for: ${parsed.owner}/${parsed.repo}`);
+      return;
+    }
 
     const bar = renderLanguageBar(info.languages);
     container.innerHTML = `<div style="margin-top: var(--space-4); font-size: var(--font-size-xs);">${bar}</div>`;
   } catch (error) {
-    // Silently fail if we can't fetch repo info (rate limit, private repo, etc)
+    console.error(`Failed to load languages for ${repoUrl}:`, error);
   }
 }
 
