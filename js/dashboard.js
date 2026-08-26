@@ -399,13 +399,13 @@ async function renderProjectDetail(project) {
     <h3>Project Links</h3>
     <form id="repo-link-form" class="dialog-form">
       <label>GitHub repo
-        <input type="url" name="repoUrl" value="${escapeHtml(repoUrl)}" placeholder="https://github.com/owner/repo" />
+        <input type="text" name="repoUrl" value="${escapeHtml(repoUrl)}" placeholder="https://github.com/owner/repo" />
       </label>
       <label>Vercel deployment
-        <input type="url" name="vercelUrl" value="${escapeHtml(vercelUrl)}" placeholder="https://project.vercel.app" />
+        <input type="text" name="vercelUrl" value="${escapeHtml(vercelUrl)}" placeholder="https://project.vercel.app or https://custom-domain.app" />
       </label>
       <label>Supabase project
-        <input type="url" name="supabaseUrl" value="${escapeHtml(supabaseUrl)}" placeholder="https://project.supabase.co" />
+        <input type="text" name="supabaseUrl" value="${escapeHtml(supabaseUrl)}" placeholder="https://project.supabase.co" />
       </label>
       <button type="submit" class="btn btn-secondary">Save project links</button>
     </form>
