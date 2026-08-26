@@ -308,6 +308,8 @@ async function fetchProjectQuestionnaires(projectId) {
 async function renderProjectDetail(project) {
   const container = document.getElementById("project-detail-content");
   const repoUrl = (project.links && project.links.github) || "";
+  const vercelUrl = (project.links && project.links.vercel) || "";
+  const supabaseUrl = (project.links && project.links.supabase) || "";
 
   let questionnairesHtml = "";
   try {
@@ -394,11 +396,18 @@ async function renderProjectDetail(project) {
 
     ${healthHtml}
 
+    <h3>Project Links</h3>
     <form id="repo-link-form" class="dialog-form">
       <label>GitHub repo
         <input type="url" name="repoUrl" value="${escapeHtml(repoUrl)}" placeholder="https://github.com/owner/repo" />
       </label>
-      <button type="submit" class="btn btn-secondary">Save repo link</button>
+      <label>Vercel deployment
+        <input type="url" name="vercelUrl" value="${escapeHtml(vercelUrl)}" placeholder="https://project.vercel.app" />
+      </label>
+      <label>Supabase project
+        <input type="url" name="supabaseUrl" value="${escapeHtml(supabaseUrl)}" placeholder="https://project.supabase.co" />
+      </label>
+      <button type="submit" class="btn btn-secondary">Save project links</button>
     </form>
 
     <div id="repo-info">
@@ -441,11 +450,21 @@ async function renderProjectDetail(project) {
 
   document.getElementById("repo-link-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const newUrl = new FormData(event.target).get("repoUrl").trim();
-    const updatedLinks = { ...(project.links || {}), github: newUrl || null };
+    const formData = new FormData(event.target);
+    const githubUrl = formData.get("repoUrl").trim();
+    const vercelUrl = formData.get("vercelUrl").trim();
+    const supabaseUrl = formData.get("supabaseUrl").trim();
+
+    const updatedLinks = {
+      ...(project.links || {}),
+      github: githubUrl || null,
+      vercel: vercelUrl || null,
+      supabase: supabaseUrl || null
+    };
+
     const { error } = await supabaseClient.from("projects").update({ links: updatedLinks }).eq("id", project.id);
     if (error) {
-      alert(`Couldn't save repo link: ${error.message}`);
+      alert(`Couldn't save project links: ${error.message}`);
       return;
     }
     project.links = updatedLinks;
