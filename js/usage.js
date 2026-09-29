@@ -1,4 +1,5 @@
 const USAGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/get-app-usage-dashboard`;
+const USAGE_CODE_KEY = "agencyos_usage_dashboard_code";
 
 function usageEscapeHtml(value) {
   if (value == null) return "";
@@ -117,17 +118,12 @@ function renderUsageDashboard(data) {
   setUsageState("");
 }
 
-async function getUsageSession() {
-  const { data } = await supabaseClient.auth.getSession();
-  return data.session;
-}
-
 async function loadUsageDashboard() {
   const login = document.getElementById("usage-login");
   const dashboard = document.getElementById("usage-dashboard");
-  const session = await getUsageSession();
+  const code = window.sessionStorage.getItem(USAGE_CODE_KEY);
 
-  if (!session) {
+  if (!code) {
     dashboard.hidden = true;
     login.hidden = false;
     setUsageState("");
@@ -140,16 +136,16 @@ async function loadUsageDashboard() {
 
   const response = await fetch(USAGE_FUNCTION_URL, {
     headers: {
-      Authorization: `Bearer ${session.access_token}`,
       apikey: SUPABASE_PUBLISHABLE_KEY,
+      "x-dashboard-code": code,
     },
   });
 
   if (!response.ok) {
     if (response.status === 401) {
-      await supabaseClient.auth.signOut();
+      window.sessionStorage.removeItem(USAGE_CODE_KEY);
       document.getElementById("usage-login").hidden = false;
-      setUsageState("Please sign in again to view analytics.", true);
+      setUsageState("That access code did not work.", true);
       return;
     }
     throw new Error("Could not load usage analytics.");
@@ -161,16 +157,14 @@ async function loadUsageDashboard() {
 document.getElementById("usage-login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.target);
-  const email = String(form.get("email") || "");
-  const password = String(form.get("password") || "");
+  const code = String(form.get("code") || "").trim();
 
-  setUsageState("Signing in...");
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
-    setUsageState(error.message, true);
+  if (!code) {
+    setUsageState("Enter the access code.", true);
     return;
   }
 
+  window.sessionStorage.setItem(USAGE_CODE_KEY, code);
   await loadUsageDashboard();
 });
 

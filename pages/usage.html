@@ -36,16 +36,13 @@
     </section>
 
     <section class="card usage-login" id="usage-login" hidden>
-      <h2>Sign in to view analytics</h2>
-      <p class="usage-muted">Analytics are loaded through a secure aggregate endpoint, not direct browser access to event tables.</p>
+      <h2>Enter access code</h2>
+      <p class="usage-muted">Analytics are loaded through an aggregate endpoint, not direct browser access to event tables.</p>
       <form id="usage-login-form" class="dialog-form">
-        <label>Email
-          <input type="email" name="email" autocomplete="email" required />
+        <label>Access code
+          <input type="password" name="code" inputmode="numeric" autocomplete="off" required />
         </label>
-        <label>Password
-          <input type="password" name="password" autocomplete="current-password" required />
-        </label>
-        <button type="submit" class="btn btn-primary">Sign in</button>
+        <button type="submit" class="btn btn-primary">View usage</button>
       </form>
     </section>
 
