@@ -30,9 +30,13 @@
     <section class="usage-page-header">
       <div>
         <h2>Usage & Adoption</h2>
-        <p>Access shows people entering apps. Actual usage shows meaningful work done inside them.</p>
+        <p>See whether delivered apps are being opened, used, and adopted over time.</p>
       </div>
-      <button type="button" class="btn btn-secondary" id="usage-refresh">Refresh</button>
+      <div class="usage-actions">
+        <div class="usage-range" id="usage-range" aria-label="Usage date range"></div>
+        <button type="button" class="btn btn-secondary" id="usage-refresh">Refresh</button>
+        <button type="button" class="btn btn-primary" id="usage-save-report">Save report</button>
+      </div>
     </section>
 
     <section class="card usage-login" id="usage-login" hidden>
@@ -47,7 +51,59 @@
     </section>
 
     <section class="usage-dashboard" id="usage-dashboard" hidden>
+      <div class="usage-dashboard-meta" id="usage-updated"></div>
       <div class="usage-summary-grid" id="usage-summary"></div>
+      <section class="usage-analytics-grid">
+        <article class="card usage-chart-card usage-chart-wide">
+          <div class="usage-card-title">
+            <h3>Adoption Trend</h3>
+            <span>Access vs actual usage</span>
+          </div>
+          <div id="usage-main-chart"></div>
+          <div class="usage-legend">
+            <span><i class="usage-legend-access"></i>Access</span>
+            <span><i class="usage-legend-action"></i>Actual usage</span>
+          </div>
+        </article>
+        <article class="card usage-chart-card">
+          <div class="usage-card-title">
+            <h3>Usage Mix</h3>
+            <span>Quality of adoption</span>
+          </div>
+          <div id="usage-donut-wrap"></div>
+        </article>
+        <article class="card usage-chart-card">
+          <div class="usage-card-title">
+            <h3>App Comparison</h3>
+            <span>Total tracked activity</span>
+          </div>
+          <div id="usage-app-comparison"></div>
+        </article>
+      </section>
+      <section class="usage-insights-grid" id="usage-insights"></section>
+      <section class="usage-analytics-grid">
+        <article class="card usage-chart-card">
+          <div class="usage-card-title">
+            <h3>Module Usage</h3>
+            <span>Where people spend time</span>
+          </div>
+          <div id="usage-module-bars"></div>
+        </article>
+        <article class="card usage-chart-card">
+          <div class="usage-card-title">
+            <h3>Action Usage</h3>
+            <span>Meaningful work completed</span>
+          </div>
+          <div id="usage-action-bars"></div>
+        </article>
+      </section>
+      <section class="card usage-chart-card">
+        <div class="usage-card-title">
+          <h3>Saved Reports</h3>
+          <span>Snapshots for later decisions</span>
+        </div>
+        <div class="usage-report-list" id="usage-report-list"></div>
+      </section>
       <div class="usage-app-grid" id="usage-app-grid"></div>
     </section>
 
