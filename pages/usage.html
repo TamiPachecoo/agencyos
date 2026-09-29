@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Usage & Adoption - Agency OS</title>
+  <link rel="stylesheet" href="../css/tokens.css" />
+  <link rel="stylesheet" href="../css/main.css" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="../shared/icons/apple-touch-icon.png" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header-left">
+      <h1>Agency OS</h1>
+      <nav class="app-nav">
+        <a href="../index.html">Dashboard</a>
+        <a href="leads.html">Leads</a>
+        <a href="time.html">Time</a>
+        <a href="tasks.html">Tasks</a>
+        <a href="finance.html">Finance</a>
+        <a href="usage.html" class="active">Usage</a>
+      </nav>
+    </div>
+    <span class="app-header-date" id="today"></span>
+  </header>
+
+  <main class="app-main">
+    <section class="usage-page-header">
+      <div>
+        <h2>Usage & Adoption</h2>
+        <p>Access shows people entering apps. Actual usage shows meaningful work done inside them.</p>
+      </div>
+      <button type="button" class="btn btn-secondary" id="usage-refresh">Refresh</button>
+    </section>
+
+    <section class="card usage-login" id="usage-login" hidden>
+      <h2>Sign in to view analytics</h2>
+      <p class="usage-muted">Analytics are loaded through a secure aggregate endpoint, not direct browser access to event tables.</p>
+      <form id="usage-login-form" class="dialog-form">
+        <label>Email
+          <input type="email" name="email" autocomplete="email" required />
+        </label>
+        <label>Password
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary">Sign in</button>
+      </form>
+    </section>
+
+    <section class="usage-dashboard" id="usage-dashboard" hidden>
+      <div class="usage-summary-grid" id="usage-summary"></div>
+      <div class="usage-app-grid" id="usage-app-grid"></div>
+    </section>
+
+    <section class="card usage-empty-state" id="usage-state">Loading usage...</section>
+  </main>
+
+  <script src="../shared/vendor/supabase.js"></script>
+  <script src="../js/supabaseClient.js"></script>
+  <script src="../js/usage.js"></script>
+</body>
+</html>
